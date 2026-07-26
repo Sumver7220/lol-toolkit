@@ -8,8 +8,6 @@
 |---|---|
 | `skins` | 匯出帳號已擁有的所有造型，產出 JSON 與可分享的 HTML 頁面 |
 
-> 狀態：開發中。
-
 ## 為什麼需要它
 
 Riot 的官方公開 API 拿不到帳號的 inventory（你擁有哪些英雄與造型），這些資料只存在於客戶端在本機開的 LCU 介面。這個工具去把它讀出來。
@@ -28,6 +26,15 @@ python -m venv .venv
 pip install -r requirements.txt
 python -m loltk skins
 ```
+
+### 打包成執行檔
+
+```bash
+pip install pyinstaller
+pyinstaller loltk.spec
+```
+
+產物位於 `dist/loltk.exe`，雙擊即可執行，輸出檔會落在 exe 所在的資料夾。
 
 ### CLI
 

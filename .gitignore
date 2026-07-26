@@ -1,9 +1,6 @@
 # 內部設計文件，本機保留即可
 docs/
 
-# 重寫前的舊版程式碼，僅供參考，不納入版控
-legacy/
-
 # PyInstaller 建置產物
 build/
 dist/
