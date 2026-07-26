@@ -4,19 +4,24 @@
 """
 
 import argparse
+import json
 import sys
 import webbrowser
 from datetime import datetime
 from pathlib import Path
 
-from . import __version__, lcu
-from .skins import render
-from .skins.inventory import Inventory, build_inventory
+from . import __version__, lcu, page
+from .sections import safe_fetch
+from .sections import challenges, loot, matches, ranked, skins as skins_section
+from .sections import summary as summary_section
+from .skins.render import SCHEMA_VERSION
 
 JSON_NAME = "lol_skins.json"
 HTML_NAME = "lol_skins.html"
 
-SESSION_PATH = "/lol-login/v1/session"
+# 子命令名稱與 JSON 頂層 key 皆取自各模組的 KEY。順序即為區塊在頁面上
+# 出現的順序。
+SECTIONS = [skins_section, loot, challenges, matches, ranked]
 
 
 def default_output_dir() -> Path:
@@ -38,48 +43,97 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"loltk {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    skins = subparsers.add_parser("skins", help="匯出已擁有的造型")
-    skins.add_argument("--output", type=Path, default=None, help="輸出目錄")
-    exclusive = skins.add_mutually_exclusive_group()
-    exclusive.add_argument("--json-only", action="store_true", help="只產生 JSON")
-    exclusive.add_argument("--html-only", action="store_true", help="只產生 HTML")
-    skins.add_argument("--no-open", action="store_true", help="不自動開啟瀏覽器")
-    skins.add_argument("--quiet", action="store_true", help="只輸出錯誤")
+    for name, help_text in [("all", "產生全部區塊")] + [
+        (s.KEY, f"只產生{s.TITLE}") for s in SECTIONS
+    ]:
+        sub = subparsers.add_parser(name, help=help_text)
+        sub.add_argument("--output", type=Path, default=None, help="輸出目錄")
+        group = sub.add_mutually_exclusive_group()
+        group.add_argument("--json-only", action="store_true", help="只產生 JSON")
+        group.add_argument("--html-only", action="store_true", help="只產生 HTML")
+        sub.add_argument("--no-open", action="store_true", help="不自動開啟瀏覽器")
+        sub.add_argument("--quiet", action="store_true", help="只輸出錯誤")
     return parser
 
 
-def fetch_inventory(client) -> Inventory:
-    session = client.get_json(SESSION_PATH)
-    summoner_id = session.get("summonerId")
-    if not summoner_id:
-        raise lcu.NotLoggedIn()
-    raw = client.get_json(
-        f"/lol-champions/v1/inventories/{summoner_id}/skins-minimal"
+def build_report(client, generated_at: datetime, keys: list[str] | None = None):
+    """取得所有（或指定）區塊，回傳 (html, payload, skipped)。
+
+    skipped 為 [(TITLE, 失敗原因)]，由呼叫端告知使用者——區塊無聲消失
+    會讓人誤以為是自己沒有那些資料。
+    """
+    chosen = [s for s in SECTIONS if keys is None or s.KEY in keys]
+
+    summary_data = summary_section.fetch(client)
+    figures = []
+    fragments = []
+    skipped = []
+    payload = {"schemaVersion": SCHEMA_VERSION, "generatedAt": generated_at.isoformat()}
+
+    skins_data = None
+    for section in chosen:
+        data, error = safe_fetch(section, client)
+        if error:
+            skipped.append((section.TITLE, error))
+        if section.KEY == "skins":
+            skins_data = data
+        fragment = section.to_html(data)
+        if not fragment and section.KEY == "ranked" and not error:
+            fragment = ranked.empty_html()
+        if fragment:
+            fragments.append(fragment)
+        as_dict = section.to_dict(data)
+        if as_dict is not None:
+            payload[section.KEY] = as_dict
+
+    if skins_data is not None:
+        figures.append(page.Figure(f"{skins_data.skin_count:,}", "造型", lead=True))
+        figures.append(page.Figure(f"{skins_data.champion_count:,}", "英雄"))
+        payload["account"] = {
+            "summonerName": skins_data.summoner_name,
+            "summonerId": skins_data.summoner_id,
+        }
+        # champions 提到頂層並移除巢狀的 skins key，維持與 schema 1 相同的形狀
+        payload["champions"] = payload.pop("skins", {}).get("champions", [])
+
+    figures.extend(summary_section.figures(summary_data))
+    summary_dict = summary_section.to_dict(summary_data)
+    if summary_dict:
+        payload["summary"] = summary_dict
+
+    name = skins_data.summoner_name if skins_data else "未知帳號"
+    total = skins_data.skin_count if skins_data else 0
+
+    html = page.render_page(
+        summoner_name=name,
+        generated_at=generated_at,
+        figures=figures,
+        sections=fragments,
+        total_tiles=total,
     )
-    return build_inventory(raw, session.get("username") or "未知帳號", summoner_id)
+    return html, payload, skipped
 
 
 def write_outputs(
-    inventory: Inventory,
+    html: str,
+    payload: dict,
     output_dir: Path,
-    generated_at: datetime,
     *,
     json_only: bool,
     html_only: bool,
 ) -> list[Path]:
+    """把已產生的內容寫成檔案。不負責產生內容。"""
     output_dir.mkdir(parents=True, exist_ok=True)
     written = []
     if not html_only:
         path = output_dir / JSON_NAME
         path.write_text(
-            render.to_json(inventory, generated_at), encoding="utf-8"
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         written.append(path)
     if not json_only:
         path = output_dir / HTML_NAME
-        path.write_text(
-            render.to_html(inventory, generated_at), encoding="utf-8"
-        )
+        path.write_text(html, encoding="utf-8")
         written.append(path)
     return written
 
@@ -104,29 +158,31 @@ def _configure_stdout() -> None:
             pass
 
 
-def _run_skins(args) -> int:
+def _run(args) -> int:
     client = lcu.LcuClient.connect()
     if not args.quiet:
         print("已連上客戶端，正在讀取資料...")
 
-    inventory = fetch_inventory(client)
+    keys = None if args.command == "all" else [args.command]
+    html, payload, skipped = build_report(
+        client, datetime.now().astimezone(), keys=keys
+    )
+
     output_dir = (args.output or default_output_dir()).resolve()
     written = write_outputs(
-        inventory,
-        output_dir,
-        datetime.now().astimezone(),
-        json_only=args.json_only,
-        html_only=args.html_only,
+        html, payload, output_dir,
+        json_only=args.json_only, html_only=args.html_only,
     )
 
     if not args.quiet:
-        print(f"\n帳號：{inventory.summoner_name}")
-        print(
-            f"共 {inventory.champion_count} 位英雄、"
-            f"{inventory.skin_count} 個造型（不含基礎造型）"
-        )
+        account = payload.get("account", {})
+        print(f"\n帳號：{account.get('summonerName', '未知')}")
         for path in written:
             print(f"已輸出：{path}")
+
+    # 略過的區塊一律回報，即使 --quiet——使用者需要知道少了什麼
+    for title, reason in skipped:
+        print(f"已略過「{title}」：{reason}", file=sys.stderr)
 
     html_files = [p for p in written if p.suffix == ".html"]
     if html_files and not args.no_open:
@@ -141,11 +197,9 @@ def _run_skins(args) -> int:
     return 0
 
 
-# 子命令名稱 -> 處理函式。未來新增子命令時只需在這裡登記，
-# 不會像直接呼叫 _run_skins 一樣被靜默導向錯的處理函式。
-COMMANDS = {
-    "skins": _run_skins,
-}
+# 子命令名稱 -> 處理函式。全部指向同一個 _run，實際差異只在
+# keys 篩選；未來新增子命令時只需在 build_parser／SECTIONS 登記。
+COMMANDS = {name: _run for name in ["all"] + [s.KEY for s in SECTIONS]}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -154,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # 雙擊 exe 的使用者不該看到 argparse 的 help 畫面
     if not argv and getattr(sys, "frozen", False):
-        argv = ["skins"]
+        argv = ["all"]
 
     args = build_parser().parse_args(argv)
     quiet = getattr(args, "quiet", False)

@@ -4,7 +4,6 @@ from datetime import datetime, timezone, timedelta
 import pytest
 
 from loltk import cli, lcu
-from loltk.skins.inventory import Champion, Inventory, Skin
 
 AT = datetime(2026, 7, 26, 14, 30, tzinfo=timezone(timedelta(hours=8)))
 
@@ -36,29 +35,11 @@ def test_parser_defaults():
     assert args.quiet is False
 
 
-def test_fetch_inventory_raises_when_not_logged_in():
-    client = FakeClient(session_payload={"username": "X"})
-    with pytest.raises(lcu.NotLoggedIn):
-        cli.fetch_inventory(client)
-
-
-def test_fetch_inventory_builds_model():
-    raw = [
-        {"name": "安妮", "id": 1000, "championId": 1, "isBase": True,
-         "chromaPath": None, "tilePath": "/t.jpg", "ownership": {"owned": True}},
-        {"name": "小紅帽 安妮", "id": 1002, "championId": 1, "isBase": False,
-         "chromaPath": None, "tilePath": "/t.jpg", "ownership": {"owned": True}},
-    ]
-    inv = cli.fetch_inventory(FakeClient(skins_payload=raw))
-    assert inv.summoner_name == "Tester"
-    assert inv.champion_count == 1
-    assert inv.skin_count == 1
-
-
 def test_write_outputs_creates_both_files(tmp_path):
-    inv = Inventory("T", 1, (Champion(1, "安妮", (
-        Skin(1002, "小紅帽 安妮", 1, False, "/t.jpg"),)),))
-    written = cli.write_outputs(inv, tmp_path, AT, json_only=False, html_only=False)
+    written = cli.write_outputs(
+        "<html>頁面</html>", {"summary": {"skins": 1}}, tmp_path,
+        json_only=False, html_only=False,
+    )
     assert (tmp_path / "lol_skins.json").exists()
     assert (tmp_path / "lol_skins.html").exists()
     assert len(written) == 2
@@ -67,16 +48,18 @@ def test_write_outputs_creates_both_files(tmp_path):
 
 
 def test_write_outputs_json_only(tmp_path):
-    inv = Inventory("T", 1, ())
-    written = cli.write_outputs(inv, tmp_path, AT, json_only=True, html_only=False)
+    written = cli.write_outputs(
+        "<html></html>", {}, tmp_path, json_only=True, html_only=False
+    )
     assert (tmp_path / "lol_skins.json").exists()
     assert not (tmp_path / "lol_skins.html").exists()
     assert len(written) == 1
 
 
 def test_write_outputs_html_only(tmp_path):
-    inv = Inventory("T", 1, ())
-    cli.write_outputs(inv, tmp_path, AT, json_only=False, html_only=True)
+    cli.write_outputs(
+        "<html></html>", {}, tmp_path, json_only=False, html_only=True
+    )
     assert not (tmp_path / "lol_skins.json").exists()
     assert (tmp_path / "lol_skins.html").exists()
 
@@ -179,8 +162,8 @@ def test_default_output_dir_uses_executable_dir_when_frozen(monkeypatch, tmp_pat
     assert cli.default_output_dir() == tmp_path.resolve()
 
 
-def test_main_defaults_to_skins_when_frozen_with_no_args(monkeypatch, tmp_path):
-    """雙擊 exe（無參數）時，應直接視為 `skins` 子命令，而不是顯示 argparse help。"""
+def test_main_defaults_to_all_when_frozen_with_no_args(monkeypatch, tmp_path):
+    """雙擊 exe（無參數）時，應直接視為 `all` 子命令，而不是顯示 argparse help。"""
     monkeypatch.setattr(cli.sys, "frozen", True, raising=False)
     monkeypatch.setattr(
         cli.lcu.LcuClient, "connect", staticmethod(lambda: FakeClient())
@@ -215,6 +198,72 @@ def test_main_catches_unexpected_exception_and_still_pauses(monkeypatch, tmp_pat
     assert code == 1
     assert paused == [1]
     assert "發生未預期的錯誤" in capsys.readouterr().err
+
+
+AT2 = datetime(2026, 7, 27, 14, 30, tzinfo=timezone(timedelta(hours=8)))
+
+
+class SectionClient:
+    """所有 endpoint 都回傳空/無效資料，用來測全部區塊皆空的情況。"""
+
+    def get_json(self, path):
+        if "current-summoner" in path:
+            return {"summonerLevel": 467, "puuid": "p", "displayName": "T"}
+        if "login/v1/session" in path:
+            return {"summonerId": 1, "username": "T"}
+        if "skins-minimal" in path:
+            return []
+        return {}
+
+
+def test_all_sections_registered():
+    keys = [s.KEY for s in cli.SECTIONS]
+    assert keys == ["skins", "loot", "challenges", "matches", "ranked"]
+
+
+def test_build_report_with_empty_data_still_produces_page():
+    html, data, skipped = cli.build_report(SectionClient(), AT2, keys=None)
+    assert "<!DOCTYPE html>" in html
+    assert data["schemaVersion"] == 2
+    assert skipped == []
+
+
+def test_keys_filter_limits_sections():
+    html, data, _ = cli.build_report(SectionClient(), AT2, keys=["skins"])
+    assert "loot" not in data
+
+
+def test_json_keeps_champions_shape_unchanged():
+    html, data, _ = cli.build_report(SectionClient(), AT2, keys=None)
+    assert "account" in data and "champions" in data
+    assert "skins" not in data  # champions 提到頂層，不留巢狀 key
+
+
+def test_failing_section_is_reported_not_silently_dropped():
+    """區塊無聲消失會讓人誤以為自己沒有那些資料。"""
+
+    class Boom:
+        def get_json(self, path):
+            if "player-loot" in path:
+                raise RuntimeError("loot exploded")
+            return SectionClient().get_json(path)
+
+    html, data, skipped = cli.build_report(Boom(), AT2, keys=None)
+    assert "<!DOCTYPE html>" in html          # 整頁仍產生
+    titles = [t for t, _ in skipped]
+    assert "造型碎片" in titles
+    assert any("loot exploded" in r for _, r in skipped)
+
+
+def test_parser_accepts_all_subcommand():
+    args = cli.build_parser().parse_args(["all"])
+    assert args.command == "all"
+
+
+def test_parser_accepts_each_section_subcommand():
+    for key in ("skins", "loot", "challenges", "matches", "ranked"):
+        args = cli.build_parser().parse_args([key])
+        assert args.command == key
 
 
 def test_pause_swallows_eof_error_when_stdin_closed(monkeypatch):

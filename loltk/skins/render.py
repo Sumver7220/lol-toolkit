@@ -8,7 +8,7 @@ from datetime import datetime
 
 from .inventory import Inventory
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 CDN_BASE = (
     "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default"
