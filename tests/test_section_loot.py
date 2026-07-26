@@ -1,3 +1,5 @@
+import pytest
+
 from loltk.sections import loot as sec
 
 
@@ -26,8 +28,14 @@ def test_keeps_only_skin_shards():
     assert data[0]["name"] == "花仙精靈 阿璃"
 
 
-def test_fetch_returns_none_on_error_never_raises():
-    assert sec.fetch(FakeClient(RuntimeError("boom"))) is None
+def test_fetch_lets_exceptions_propagate():
+    """例外必須往外拋給 safe_fetch，區塊不得自己吞掉。
+
+    自己吞掉會讓 safe_fetch 看不到真正的錯誤，使用者只會看到區塊憑空
+    消失而不知原因。
+    """
+    with pytest.raises(RuntimeError):
+        sec.fetch(FakeClient(RuntimeError("boom")))
 
 
 def test_fetch_returns_none_when_no_shards():

@@ -21,10 +21,8 @@ def fetch(client) -> list[dict] | None:
     過濾戰利品中的造型碎片（displayCategories == "SKIN"），
     並依分解價值降序排列。
     """
-    try:
-        raw = client.get_json(LOOT_PATH)
-    except Exception:
-        return None
+    # 不要 try/except——例外由 sections.safe_fetch 統一攔截
+    raw = client.get_json(LOOT_PATH)
     if not isinstance(raw, list):
         return None
     shards = [
@@ -32,7 +30,7 @@ def fetch(client) -> list[dict] | None:
             "name": x.get("itemDesc") or "未知造型",
             "count": int(x.get("count") or 0),
             "value": int(x.get("disenchantValue") or 0),
-            "rarity": x.get("rarity") or "",
+            "rarity": x.get("rarity") or "",  # 僅進 JSON，不進 HTML
             "tile_path": x.get("tilePath") or "",
         }
         for x in raw
