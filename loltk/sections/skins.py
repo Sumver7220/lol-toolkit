@@ -9,6 +9,7 @@ from ..assets import cdn_url
 from ..inventory import Inventory, build_inventory
 from ..theme import esc
 from ._tile import tile
+from ._wall import wall
 
 KEY = "skins"
 TITLE = "造型收藏"
@@ -104,6 +105,7 @@ def to_html(inv: Inventory | None) -> str:
         )
 
     return f"""<div class="sec-skins">
+<h2 class="sr-only">{esc(TITLE)}</h2>
 <div class="bar"><div class="wrap">
 <input id="q" type="search" placeholder="搜尋英雄或造型…" autocomplete="off"
  aria-label="搜尋英雄或造型">
@@ -113,7 +115,7 @@ def to_html(inv: Inventory | None) -> str:
 </div></div>
 <div class="index" id="index"><div class="wrap">{index}</div></div>
 <div class="wrap">
-<div class="wall" id="skin-wall">{tiles}</div>
+{wall(tiles=tiles, wall_id="skin-wall", expand_label=f"展開全部 {total:,} 個造型")}
 <div class="empty" id="none">找不到符合的英雄或造型。</div>
 {chips}
 </div>

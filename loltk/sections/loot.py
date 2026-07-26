@@ -8,6 +8,7 @@
 from ..assets import cdn_url
 from ..theme import esc
 from ._tile import tile
+from ._wall import wall
 
 KEY = "loot"
 TITLE = "造型碎片"
@@ -96,5 +97,5 @@ def to_html(data: list[dict] | None) -> str:
     return f"""<div class="wrap">
 <section class="block">
 <h2 class="block-h">{esc(TITLE)} <span class="sub">{total:,} 個 · 分解可得 {value:,} 橘色精華</span></h2>
-<div class="wall">{tiles}</div>
+{wall(tiles=tiles, wall_id="loot-wall", expand_label=f"展開全部 {total:,} 個碎片")}
 </section></div>"""
