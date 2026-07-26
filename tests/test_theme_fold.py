@@ -43,9 +43,13 @@ def test_fold_reads_gap_from_computed_style_not_hardcoded():
 
 
 def test_fold_recomputes_on_resize_without_an_observer_loop():
-    """ResizeObserver 觀察被自己改動尺寸的元素會無限迴圈。"""
+    """ResizeObserver 觀察被自己改動尺寸的元素會無限迴圈。
+
+    只擋建構式而非整個字串——註解裡說明「為什麼不用它」是有價值的
+    文件，不該因為提到名字就被擋下來。
+    """
     assert "addEventListener('resize'" in theme.SCRIPT
-    assert "ResizeObserver" not in theme.SCRIPT
+    assert "new ResizeObserver" not in theme.SCRIPT
 
 
 def test_searching_unfolds_the_skin_wall():
@@ -53,6 +57,17 @@ def test_searching_unfolds_the_skin_wall():
     assert "unfold.get('skin-wall')" in theme.SCRIPT
 
 
-def test_collapsing_scrolls_back_with_the_nav_offset():
-    assert "NAVH" in theme.SCRIPT
-    assert "scrollTo(" in theme.SCRIPT
+def test_collapsing_scrolls_back_clear_of_the_sticky_chrome():
+    """偏移量交給 CSS 宣告，JS 不必知道頁面上有哪些 sticky 元素。"""
+    # 綁在 box 上才算數：SCRIPT 裡另有一處 .bar 的 scrollIntoView，
+    # 只比對裸的 scrollIntoView({block:'start'}) 會被那一處矇混過關。
+    assert "box.scrollIntoView({block:'start'})" in theme.SCRIPT
+    # .wall-box 那條同時寫了 position，因此比對規則內容而非整條字串。
+    base = theme.STYLE[theme.STYLE.index("\n.wall-box{") :]
+    base = base[: base.index("}")]
+    assert "scroll-margin-top:var(--nav-h)" in base
+    # 造型牆上方多一條 sticky 搜尋列，只讓開導覽列高度會蓋住第一排
+    assert (
+        ".sec-skins .wall-box{scroll-margin-top:calc(var(--nav-h) + var(--bar-h))}"
+        in theme.STYLE
+    )

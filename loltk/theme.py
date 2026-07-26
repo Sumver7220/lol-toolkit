@@ -159,11 +159,14 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
 .hide{display:none!important}
 
 /* --- 圖像牆折疊（屬於 .wall 模式本身，所有牆共用） --- */
-.wall-box{position:relative}
+.wall-box{position:relative;scroll-margin-top:var(--nav-h)}
+/* 造型牆上方還有一條 sticky 搜尋列，只讓開導覽列高度會蓋住第一排 tile。
+   偏移交給 CSS 宣告，JS 的 scrollIntoView 就不必知道頁面上有哪些 sticky。 */
+.sec-skins .wall-box{scroll-margin-top:calc(var(--nav-h) + var(--bar-h))}
 .wall-box.folded .wall{overflow:hidden}
 /* 遮罩疊在 .wall-box 而非 .wall 上——後者裁切內容。bottom 讓開按鈕高度。 */
 .wall-box.folded::after{content:"";position:absolute;left:0;right:0;
-  bottom:var(--more-h);height:96px;pointer-events:none;
+  bottom:var(--more-h);height:var(--s-24);pointer-events:none;
   background:linear-gradient(transparent,var(--bg))}
 .more{display:block;width:100%;height:var(--more-h);background:var(--surface-2);
   border:1px solid var(--line);border-top:0;color:var(--text-muted);
@@ -309,15 +312,17 @@ for(const box of document.querySelectorAll('.wall-box')){
   btn.textContent=open?'收起':label;
   btn.setAttribute('aria-expanded',open?'true':'false');
   paint();
-  /* 收起時牆會縮短，捲軸位置會落在後面的區塊，捲回牆頂並讓開導覽列。 */
-  if(was)scrollTo({top:box.getBoundingClientRect().top+scrollY-NAVH});
+  /* 收起時牆會縮短，捲軸位置會落在後面的區塊，捲回牆頂。讓開多少由
+     CSS 的 scroll-margin-top 宣告，這裡不必知道上方有哪些 sticky。 */
+  if(was)box.scrollIntoView({block:'start'});
  });
  unfold.set(wall.id,v=>{forced=v;paint()});
  repaint.push(paint);
  paint();
 }
-/* 用 resize 事件而非尺寸觀察器：折疊會改動牆自身的高度，觀察那面牆
-   會讓回呼觸發自己形成無限迴圈；折疊高度也同時取決於視窗高度。 */
+/* 用 resize 事件而非 ResizeObserver：折疊會改動牆自身的 max-height，
+   觀察那面牆會讓回呼觸發自己形成無限迴圈；而且折疊高度同時取決於視窗
+   高度，resize 兩者都涵蓋。 */
 addEventListener('resize',()=>{for(const p of repaint)p()});
 const q=document.getElementById('q');
 if(q){
