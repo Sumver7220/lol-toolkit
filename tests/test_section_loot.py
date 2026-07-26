@@ -1,0 +1,69 @@
+from loltk.sections import loot as sec
+
+
+def shard(name, count=1, value=270, rarity="EPIC", cat="SKIN",
+          tile="/lol-game-data/assets/ASSETS/a/b.jpg"):
+    return {
+        "itemDesc": name, "count": count, "disenchantValue": value,
+        "rarity": rarity, "displayCategories": cat, "tilePath": tile,
+    }
+
+
+class FakeClient:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def get_json(self, path):
+        if isinstance(self.payload, Exception):
+            raise self.payload
+        return self.payload
+
+
+def test_keeps_only_skin_shards():
+    c = FakeClient([shard("花仙精靈 阿璃"), shard("鑰匙", cat="CHEST")])
+    data = sec.fetch(c)
+    assert len(data) == 1
+    assert data[0]["name"] == "花仙精靈 阿璃"
+
+
+def test_fetch_returns_none_on_error_never_raises():
+    assert sec.fetch(FakeClient(RuntimeError("boom"))) is None
+
+
+def test_fetch_returns_none_when_no_shards():
+    assert sec.fetch(FakeClient([shard("鑰匙", cat="CHEST")])) is None
+
+
+def test_sorted_by_disenchant_value_descending():
+    c = FakeClient([shard("便宜", value=100), shard("貴", value=900)])
+    assert [d["name"] for d in sec.fetch(c)] == ["貴", "便宜"]
+
+
+def test_html_shows_count_and_total_value():
+    data = [{"name": "花仙精靈 阿璃", "count": 2, "value": 270,
+             "rarity": "EPIC", "tile_path": "/lol-game-data/assets/x.jpg"}]
+    html = sec.to_html(data)
+    assert "花仙精靈 阿璃" in html
+    assert "540" in html  # 2 x 270
+    assert 'class="wall"' in html
+
+
+def test_html_marks_duplicate_count_only_when_above_one():
+    one = [{"name": "A", "count": 1, "value": 10, "rarity": "EPIC",
+            "tile_path": "/lol-game-data/assets/x.jpg"}]
+    assert "×1" not in sec.to_html(one)
+    two = [dict(one[0], count=2)]
+    assert "×2" in sec.to_html(two)
+
+
+def test_html_escapes_names():
+    data = [{"name": 'x" onerror="evil()', "count": 1, "value": 1,
+             "rarity": "EPIC", "tile_path": ""}]
+    html = sec.to_html(data)
+    assert 'onerror="evil()' not in html
+    assert "&quot;" in html
+
+
+def test_none_yields_empty_outputs():
+    assert sec.to_html(None) == ""
+    assert sec.to_dict(None) is None

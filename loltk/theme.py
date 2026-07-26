@@ -155,6 +155,14 @@ footer{padding:var(--s-8) 0 var(--s-16);color:var(--text-faint);font-size:var(--
   #q{flex:1 1 100%}
   .tally{margin-left:auto}
 }
+
+/* --- 區塊標題 --- */
+.block{margin:var(--s-16) 0 0}
+.block-h{font-family:var(--font-display);font-size:var(--fs-md);font-weight:600;
+  letter-spacing:.04em;margin:0 0 var(--s-4);padding-bottom:var(--s-3);
+  border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:var(--s-3)}
+.block-h .sub{font-family:var(--font-text);font-size:var(--fs-xs);font-weight:400;
+  color:var(--text-muted);letter-spacing:.02em}
 """
 
 SCRIPT = """const TOTAL=__TOTAL__;
