@@ -196,6 +196,12 @@ footer{padding:var(--s-8) 0 var(--s-16);color:var(--text-faint);font-size:var(--
 .note{color:var(--text-muted);font-size:var(--fs-sm);margin:var(--s-4) 0 0}
 @media (max-width:640px){.ev{grid-template-columns:40px 1fr auto;row-gap:var(--s-1)}
   .ev-d,.ev-t{display:none}}
+
+/* --- 造型收藏區塊外殼：讓 .bar 的 sticky 只在本區塊內生效 --- */
+/* .bar 的 containing block 原本是 <body>，會一路釘到頁尾。包一層
+   .sec-skins 之後，sticky 只會黏到這個容器的下緣，捲到後續區塊
+   （挑戰進度、對戰紀錄……）時就會正常隨頁面捲走，不再疊在上方。 */
+.sec-skins{position:relative}
 """
 
 SCRIPT = """const TOTAL=__TOTAL__;

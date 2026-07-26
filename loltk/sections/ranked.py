@@ -14,6 +14,7 @@ PATH = "/lol-ranked/v1/current-ranked-stats"
 _QUEUES = {
     "RANKED_SOLO_5x5": "單／雙排",
     "RANKED_FLEX_SR": "彈性積分",
+    "RANKED_PREMADE_5x5": "組隊排位（舊制）",
     "RANKED_TFT": "聯盟戰棋",
     "RANKED_TFT_DOUBLE_UP": "戰棋雙人",
     "RANKED_TFT_TURBO": "超級戰棋",

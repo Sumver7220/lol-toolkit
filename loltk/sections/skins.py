@@ -74,7 +74,8 @@ def to_html(inv: Inventory | None) -> str:
             f'<div class="chips">{items}</div></section>'
         )
 
-    return f"""<div class="bar"><div class="wrap">
+    return f"""<div class="sec-skins">
+<div class="bar"><div class="wrap">
 <input id="q" type="search" placeholder="搜尋英雄或造型…" autocomplete="off"
  aria-label="搜尋英雄或造型">
 <button class="btn" id="idxbtn" type="button" aria-expanded="false" aria-controls="index">
@@ -86,4 +87,5 @@ def to_html(inv: Inventory | None) -> str:
 <div class="wall" id="skin-wall">{tiles}</div>
 <div class="empty" id="none">找不到符合的英雄或造型。</div>
 {chips}
+</div>
 </div>"""
