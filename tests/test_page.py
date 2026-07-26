@@ -39,6 +39,41 @@ def test_theme_has_no_manual_toggle_leftovers():
     assert "mockonly" not in theme.SCRIPT
 
 
+def test_script_scopes_tile_query_to_skin_wall():
+    """回歸測試：跨區塊 tally bug。
+
+    碎片區塊（loltk/sections/loot.py）跟造型牆共用同一份 .t/.wall
+    標記，若 SCRIPT 用不限範圍的 querySelectorAll('.t') 抓 tile，
+    分子會把碎片也算進去，但分母（__TOTAL__）只算造型數，
+    導致「找到的 / 造型總數」對不上（例如 575 / 486）。
+    查詢必須限縮在 #skin-wall 裡。
+    """
+    assert "querySelectorAll('#skin-wall .t')" in theme.SCRIPT
+    # 不能同時留著沒有限縮範圍的舊寫法
+    assert "querySelectorAll('.t')" not in theme.SCRIPT
+
+
+def test_script_guards_missing_dom_elements():
+    """回歸測試：`loltk loot` 單獨模式沒有 .bar / #q / #skin-wall。
+
+    SCRIPT 目前的寫法一開頭就抓 #q 並直接掛 addEventListener，
+    在只有碎片區塊的頁面上 #q 是 null，會丟出 TypeError 讓整段
+    JS 掛掉。修正後必須在抓不到 #q 時安靜跳過，不執行後續的
+    tally／index／#none 邏輯。
+
+    這裡只能靜態檢查 SCRIPT 原始碼有沒有防護（例如 `if(q){`
+    這種在使用 q 之前先判斷是否存在的寫法）；DOM 層面的行為
+    已用無頭瀏覽器（Playwright）對 `loltk loot` 單獨算繪出的
+    HTML 人工確認過，console 沒有出現 TypeError（見任務報告）。
+    """
+    assert "if(q){" in theme.SCRIPT
+    q_pos = theme.SCRIPT.index("getElementById('q')")
+    guard_pos = theme.SCRIPT.index("if(q){")
+    add_listener_pos = theme.SCRIPT.index("q.addEventListener")
+    # 防護必須夾在「拿到 q」跟「開始使用 q」之間
+    assert q_pos < guard_pos < add_listener_pos
+
+
 def test_poster_shows_name_time_and_figures():
     html = build()
     assert "SumverMizz" in html

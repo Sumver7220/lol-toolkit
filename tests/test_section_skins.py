@@ -22,6 +22,16 @@ def test_tiles_are_flat_not_grouped():
     assert html.count('data-k="') == 3
 
 
+def test_wall_has_skin_wall_id_for_script_scoping():
+    """回歸測試：theme.SCRIPT 用 '#skin-wall .t' 限縮查詢範圍，
+
+    造型牆必須有這個 id，否則搜尋計數會把碎片牆的 tile 也算進去
+    （見 loltk/sections/loot.py 的同款 .wall 容器）。
+    """
+    html = sec.to_html(inv([ANNIE]))
+    assert 'id="skin-wall"' in html
+
+
 def test_tile_is_a_button_for_keyboard_access():
     html = sec.to_html(inv([ANNIE]))
     assert "<button" in html

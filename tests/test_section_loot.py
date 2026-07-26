@@ -75,3 +75,16 @@ def test_html_escapes_names():
 def test_none_yields_empty_outputs():
     assert sec.to_html(None) == ""
     assert sec.to_dict(None) is None
+
+
+def test_wall_has_no_skin_wall_id():
+    """回歸測試：碎片牆不得有 id="skin-wall"。
+
+    theme.SCRIPT 用 '#skin-wall .t' 限縮造型搜尋的查詢範圍，若碎片牆
+    也用了這個 id，會讓兩個 wall 的 tile 混在一起被誤算。
+    """
+    data = [{"name": "花仙精靈 阿璃", "count": 1, "value": 270,
+             "rarity": "EPIC", "tile_path": "/lol-game-data/assets/x.jpg"}]
+    html = sec.to_html(data)
+    assert 'id="skin-wall"' not in html
+    assert 'class="wall"' in html

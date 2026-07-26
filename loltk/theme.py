@@ -199,21 +199,24 @@ footer{padding:var(--s-8) 0 var(--s-16);color:var(--text-faint);font-size:var(--
 """
 
 SCRIPT = """const TOTAL=__TOTAL__;
-const q=document.getElementById('q'),tiles=[...document.querySelectorAll('.t')],
- tally=document.getElementById('tally'),none=document.getElementById('none'),
- idx=document.getElementById('index'),toggle=document.getElementById('idxbtn');
-function apply(v){v=v.trim().toLowerCase();let n=0;
- for(const t of tiles){const hit=!v||t.dataset.k.includes(v);
-  t.classList.toggle('hide',!hit);if(hit)n++}
- tally.textContent=n.toLocaleString()+' / TOTAL'.replace('TOTAL',TOTAL.toLocaleString());
- none.classList.toggle('on',n===0);}
-q.addEventListener('input',()=>apply(q.value));
-toggle.addEventListener('click',()=>{const o=idx.classList.toggle('open');
- toggle.setAttribute('aria-expanded',o)});
-idx.addEventListener('click',ev=>{const b=ev.target.closest('.ix');if(!b)return;
- q.value=b.dataset.n;apply(q.value);idx.classList.remove('open');
- toggle.setAttribute('aria-expanded','false');
- document.querySelector('.bar').scrollIntoView({block:'start'});});
+const q=document.getElementById('q');
+if(q){
+ const tiles=[...document.querySelectorAll('#skin-wall .t')],
+  tally=document.getElementById('tally'),none=document.getElementById('none'),
+  idx=document.getElementById('index'),toggle=document.getElementById('idxbtn');
+ function apply(v){v=v.trim().toLowerCase();let n=0;
+  for(const t of tiles){const hit=!v||t.dataset.k.includes(v);
+   t.classList.toggle('hide',!hit);if(hit)n++}
+  tally.textContent=n.toLocaleString()+' / TOTAL'.replace('TOTAL',TOTAL.toLocaleString());
+  none.classList.toggle('on',n===0);}
+ q.addEventListener('input',()=>apply(q.value));
+ toggle.addEventListener('click',()=>{const o=idx.classList.toggle('open');
+  toggle.setAttribute('aria-expanded',o)});
+ idx.addEventListener('click',ev=>{const b=ev.target.closest('.ix');if(!b)return;
+  q.value=b.dataset.n;apply(q.value);idx.classList.remove('open');
+  toggle.setAttribute('aria-expanded','false');
+  document.querySelector('.bar').scrollIntoView({block:'start'});});
+}
 """
 
 

@@ -83,7 +83,7 @@ def to_html(inv: Inventory | None) -> str:
 </div></div>
 <div class="index" id="index"><div class="wrap">{index}</div></div>
 <div class="wrap">
-<div class="wall">{tiles}</div>
+<div class="wall" id="skin-wall">{tiles}</div>
 <div class="empty" id="none">找不到符合的英雄或造型。</div>
 {chips}
 </div>"""
