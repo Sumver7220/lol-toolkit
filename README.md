@@ -6,7 +6,12 @@
 
 | 子命令 | 功能 |
 |---|---|
-| `skins` | 匯出帳號已擁有的所有造型，產出 JSON 與可分享的 HTML 頁面 |
+| `all` | 產生完整頁面（預設，雙擊 exe 即為此模式） |
+| `skins` | 只產生造型收藏 |
+| `loot` | 只產生造型碎片 |
+| `challenges` | 只產生挑戰進度 |
+| `matches` | 只產生最近對戰 |
+| `ranked` | 只產生排位戰績 |
 
 ## 為什麼需要它
 
@@ -24,7 +29,7 @@ Riot 的官方公開 API 拿不到帳號的 inventory（你擁有哪些英雄與
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 pip install -r requirements.txt
-python -m loltk skins
+python -m loltk all
 ```
 
 ### 打包成執行檔
@@ -39,7 +44,7 @@ pyinstaller loltk.spec
 ### CLI
 
 ```
-loltk skins [--output DIR] [--json-only | --html-only] [--no-open] [--quiet]
+loltk <all|skins|loot|challenges|matches|ranked> [--output DIR] [--json-only | --html-only] [--no-open] [--quiet]
 ```
 
 | 參數 | 說明 |
@@ -65,6 +70,7 @@ LCU 使用自我簽署憑證，所以程式會關閉憑證驗證——連線目�
 - 僅在 Windows 上測試過
 - 所有操作皆為唯讀，不會對帳號做任何修改
 - 若客戶端以系統管理員權限執行，本工具也需要以相同權限執行才讀得到進程參數
+- 對戰紀錄僅能取得最近數場，客戶端不保留完整歷史
 
 ## 致謝
 
