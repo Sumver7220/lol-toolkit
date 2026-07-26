@@ -5,7 +5,7 @@
 可直接沿用同一套 CDN 推導與圖像網格。
 """
 
-from ..skins.render import cdn_url
+from ..assets import cdn_url
 from ..theme import esc
 from ._tile import tile
 

@@ -14,10 +14,13 @@ from . import __version__, lcu, page
 from .sections import safe_fetch
 from .sections import challenges, loot, matches, ranked, skins as skins_section
 from .sections import summary as summary_section
-from .skins.render import SCHEMA_VERSION
 
 JSON_NAME = "lol_skins.json"
 HTML_NAME = "lol_skins.html"
+
+# JSON 輸出的結構版本。升版時機：champions／summary／account 等頂層
+# 欄位的形狀有不相容變動。
+SCHEMA_VERSION = 2
 
 # 子命令名稱與 JSON 頂層 key 皆取自各模組的 KEY。順序即為區塊在頁面上
 # 出現的順序。

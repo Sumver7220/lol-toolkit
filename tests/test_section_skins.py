@@ -1,5 +1,5 @@
 from loltk.sections import skins as sec
-from loltk.skins.inventory import Champion, Inventory, Skin
+from loltk.inventory import Champion, Inventory, Skin
 
 
 def sk(i, name, cid=1, chroma=False, tile="/lol-game-data/assets/ASSETS/a/b.jpg"):
@@ -92,6 +92,40 @@ def test_escapes_hostile_names():
 def test_none_returns_empty_string():
     assert sec.to_html(None) == ""
     assert sec.to_dict(None) is None
+
+
+def test_to_dict_champion_and_skin_fields():
+    """champion_dicts 的形狀最終會直接出現在 JSON 的 champions 欄位，
+    因此固定其欄位名稱、巢狀結構與 tileUrl 的 CDN 轉換。"""
+    data = sec.to_dict(inv([ANNIE]))
+    assert data == {
+        "champions": [
+            {
+                "championId": 1,
+                "name": "安妮",
+                "skins": [
+                    {
+                        "id": 1002,
+                        "name": "小紅帽 安妮",
+                        "hasChromas": False,
+                        "tileUrl": (
+                            "https://raw.communitydragon.org/latest/plugins/"
+                            "rcp-be-lol-game-data/global/default/assets/a/b.jpg"
+                        ),
+                    },
+                    {
+                        "id": 1013,
+                        "name": "牛年 安妮",
+                        "hasChromas": True,
+                        "tileUrl": (
+                            "https://raw.communitydragon.org/latest/plugins/"
+                            "rcp-be-lol-game-data/global/default/assets/a/b.jpg"
+                        ),
+                    },
+                ],
+            }
+        ]
+    }
 
 
 def test_tile_counting_with_data_k_is_collision_proof():

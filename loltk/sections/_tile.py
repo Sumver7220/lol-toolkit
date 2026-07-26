@@ -4,7 +4,7 @@
 形狀相同的標記。
 """
 
-from ..skins.render import cdn_url
+from ..assets import cdn_url
 from ..theme import esc
 
 

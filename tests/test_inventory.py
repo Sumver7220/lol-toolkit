@@ -1,4 +1,4 @@
-from loltk.skins.inventory import Champion, Inventory, Skin, build_inventory
+from loltk.inventory import Champion, Inventory, Skin, build_inventory
 
 
 def raw_skin(name, skin_id, champion_id, *, base=False, owned=True, chroma=None, tile="/t.jpg"):

@@ -5,8 +5,8 @@
 搜尋與英雄索引抽屜三個機制承擔。
 """
 
-from ..skins.inventory import Inventory, build_inventory
-from ..skins.render import champion_dicts
+from ..assets import cdn_url
+from ..inventory import Inventory, build_inventory
 from ..theme import esc
 from ._tile import tile
 
@@ -28,12 +28,32 @@ def fetch(client) -> Inventory | None:
     return build_inventory(raw, session.get("username") or "未知帳號", summoner_id)
 
 
+def champion_dicts(inventory: Inventory) -> list[dict]:
+    """英雄與造型的清單。這份清單最終會出現在 JSON 的 champions 欄位。"""
+    return [
+        {
+            "championId": champion.champion_id,
+            "name": champion.name,
+            "skins": [
+                {
+                    "id": skin.id,
+                    "name": skin.name,
+                    "hasChromas": skin.has_chromas,
+                    "tileUrl": cdn_url(skin.tile_path),
+                }
+                for skin in champion.skins
+            ],
+        }
+        for champion in inventory.champions
+    ]
+
+
 def to_dict(inv: Inventory | None) -> dict | None:
     """只回傳 champions 清單。
 
-    刻意不呼叫 skins.render.to_dict——那會回傳一份完整文件（含自己的
-    schemaVersion、generatedAt、account），塞進頂層區塊後會變成巢狀
-    重複。帳號與版本資訊由 cli.build_report 統一在頂層產生。
+    刻意不回傳一份完整文件（含自己的 schemaVersion、generatedAt、
+    account）——塞進頂層區塊後會變成巢狀重複。帳號與版本資訊由
+    cli.build_report 統一在頂層產生。
     """
     if inv is None:
         return None
