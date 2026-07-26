@@ -124,7 +124,13 @@ def _run_skins(args) -> int:
 
     html_files = [p for p in written if p.suffix == ".html"]
     if html_files and not args.no_open:
-        webbrowser.open(html_files[0].as_uri())
+        try:
+            webbrowser.open(html_files[0].as_uri())
+        except OSError as exc:
+            print(
+                f"檔案已產生，但無法自動開啟瀏覽器：{exc}\n"
+                f"請手動開啟：{html_files[0]}"
+            )
     return 0
 
 
