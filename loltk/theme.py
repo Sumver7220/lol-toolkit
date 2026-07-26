@@ -176,6 +176,26 @@ footer{padding:var(--s-8) 0 var(--s-16);color:var(--text-faint);font-size:var(--
 .prog-bar i{display:block;height:100%;background:var(--accent)}
 .prog-v{font-family:var(--font-display);font-size:var(--fs-xs);color:var(--text-faint);
   font-variant-numeric:tabular-nums}
+
+/* --- 模式 7：時間軸清單／空狀態 --- */
+.events{list-style:none;margin:0;padding:0;border-top:1px solid var(--line-soft)}
+.ev{display:grid;grid-template-columns:44px 1fr auto auto auto;gap:var(--s-4);
+  align-items:center;padding:var(--s-3) var(--s-2);
+  border-bottom:1px solid var(--line-soft);font-size:var(--fs-sm)}
+.ev-r{font-size:var(--fs-xs);letter-spacing:.1em;text-align:center;padding:2px 0}
+.ev.win .ev-r{color:var(--accent)}
+.ev.loss .ev-r{color:var(--text-faint)}
+.ev-k,.ev-d,.ev-t{font-family:var(--font-display);font-size:var(--fs-xs);
+  color:var(--text-muted);font-variant-numeric:tabular-nums}
+.ranks{display:grid;gap:var(--s-4);grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.rank{border:1px solid var(--line);padding:var(--s-4);background:var(--surface)}
+.rank-q{font-size:var(--fs-xs);letter-spacing:var(--track-wide);color:var(--text-faint)}
+.rank-t{font-family:var(--font-display);font-size:var(--fs-md);margin:var(--s-2) 0}
+.rank-lp{color:var(--accent);font-size:var(--fs-xs)}
+.rank-w{font-size:var(--fs-xs);color:var(--text-muted)}
+.note{color:var(--text-muted);font-size:var(--fs-sm);margin:var(--s-4) 0 0}
+@media (max-width:640px){.ev{grid-template-columns:40px 1fr auto;row-gap:var(--s-1)}
+  .ev-d,.ev-t{display:none}}
 """
 
 SCRIPT = """const TOTAL=__TOTAL__;
