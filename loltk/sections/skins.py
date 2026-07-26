@@ -13,6 +13,15 @@ from ._tile import tile
 KEY = "skins"
 TITLE = "造型收藏"
 
+# 導覽列用短標籤而非 TITLE：「造型收藏」在 390px 螢幕的導覽列太長。
+NAV_LABEL = "造型"
+
+
+def nav_count(inv: Inventory | None) -> str | None:
+    """導覽列上的計數。無資料時回 None，該項目就不顯示數字。"""
+    return f"{inv.skin_count:,}" if inv else None
+
+
 SESSION_PATH = "/lol-login/v1/session"
 
 

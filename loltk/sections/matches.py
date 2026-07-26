@@ -10,6 +10,13 @@ from ..theme import esc
 KEY = "matches"
 TITLE = "最近對戰"
 
+NAV_LABEL = "對戰"
+
+
+def nav_count(data: list[dict] | None) -> str | None:
+    return f"{len(data):,}" if data else None
+
+
 LIMIT_NOTE = "客戶端不保留完整歷史，僅能取得最近的對戰"
 
 # 佇列 ID → 中文名稱。已驗證者列入；未驗證者不要猜測。

@@ -9,6 +9,8 @@ from ..theme import esc
 KEY = "ranked"
 TITLE = "排位戰績"
 
+NAV_LABEL = "排位"
+
 PATH = "/lol-ranked/v1/current-ranked-stats"
 
 _QUEUES = {

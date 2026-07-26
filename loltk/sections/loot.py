@@ -12,6 +12,17 @@ from ._tile import tile
 KEY = "loot"
 TITLE = "造型碎片"
 
+NAV_LABEL = "碎片"
+
+
+def nav_count(data: list[dict] | None) -> str | None:
+    """碎片總數含重複——89 個碎片可能只有 70 種造型，總數才是使用者
+    心裡的那個數字。"""
+    if not data:
+        return None
+    return f"{sum(s['count'] for s in data):,}"
+
+
 LOOT_PATH = "/lol-loot/v1/player-loot"
 
 

@@ -8,6 +8,8 @@ from ..theme import esc
 KEY = "challenges"
 TITLE = "挑戰進度"
 
+NAV_LABEL = "挑戰"
+
 PATH = "/lol-challenges/v1/summary-player-data/local-player"
 
 _NAMES = {
