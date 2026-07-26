@@ -1,0 +1,66 @@
+import json
+from datetime import datetime, timezone, timedelta
+
+from loltk.skins import render
+from loltk.skins.inventory import Champion, Inventory, Skin
+
+TAIPEI = timezone(timedelta(hours=8))
+AT = datetime(2026, 7, 26, 14, 30, 0, tzinfo=TAIPEI)
+
+
+def sample_inventory():
+    skin = Skin(
+        id=1002,
+        name="小紅帽 安妮",
+        champion_id=1,
+        has_chromas=True,
+        tile_path="/lol-game-data/assets/ASSETS/Characters/Annie/Skins/Skin02/Images/annie_splash_tile_2.jpg",
+    )
+    return Inventory(
+        summoner_name="SumverMizz",
+        summoner_id=3112301784908896,
+        champions=(Champion(champion_id=1, name="安妮", skins=(skin,)),),
+    )
+
+
+def test_cdn_url_lowercases_and_strips_lcu_prefix():
+    path = "/lol-game-data/assets/ASSETS/Characters/Annie/Skins/Skin02/Images/annie_splash_tile_2.jpg"
+    assert render.cdn_url(path) == (
+        "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/"
+        "global/default/assets/characters/annie/skins/skin02/images/annie_splash_tile_2.jpg"
+    )
+
+
+def test_cdn_url_returns_empty_string_for_empty_path():
+    assert render.cdn_url("") == ""
+
+
+def test_json_has_expected_top_level_shape():
+    data = json.loads(render.to_json(sample_inventory(), AT))
+    assert data["schemaVersion"] == render.SCHEMA_VERSION
+    assert data["generatedAt"] == "2026-07-26T14:30:00+08:00"
+    assert data["account"] == {
+        "summonerName": "SumverMizz",
+        "summonerId": 3112301784908896,
+    }
+    assert data["summary"] == {"champions": 1, "skins": 1}
+
+
+def test_json_champion_and_skin_fields():
+    data = json.loads(render.to_json(sample_inventory(), AT))
+    champion = data["champions"][0]
+    assert champion["championId"] == 1
+    assert champion["name"] == "安妮"
+    skin = champion["skins"][0]
+    assert skin["id"] == 1002
+    assert skin["name"] == "小紅帽 安妮"
+    assert skin["hasChromas"] is True
+    assert skin["tileUrl"].startswith("https://raw.communitydragon.org/")
+    assert skin["tileUrl"].endswith("annie_splash_tile_2.jpg")
+
+
+def test_json_is_human_readable_and_keeps_chinese():
+    text = render.to_json(sample_inventory(), AT)
+    assert "小紅帽 安妮" in text
+    assert "\\u" not in text
+    assert "\n" in text
