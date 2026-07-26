@@ -64,10 +64,10 @@ def build_report(client, generated_at: datetime, keys: list[str] | None = None):
     """
     chosen = [s for s in SECTIONS if keys is None or s.KEY in keys]
 
-    summary_data = summary_section.fetch(client)
+    summary_data, summary_errors = summary_section.fetch(client)
     figures = []
     fragments = []
-    skipped = []
+    skipped = [(summary_section.TITLE, err) for err in summary_errors]
     payload = {"schemaVersion": SCHEMA_VERSION, "generatedAt": generated_at.isoformat()}
 
     skins_data = None
@@ -75,16 +75,28 @@ def build_report(client, generated_at: datetime, keys: list[str] | None = None):
         data, error = safe_fetch(section, client)
         if error:
             skipped.append((section.TITLE, error))
+        # skins 是唯一需要特殊處理的區塊：它的 fetch 回傳一個 Inventory
+        # 物件（而非其他區塊慣用的 list/dict），且海報卡的造型／英雄數字
+        # 與 JSON 的 champions 提升都得靠它——這份資料形狀與其他區塊差
+        # 太多，無法用通用機制概括，因此保留這個特例。
         if section.KEY == "skins":
             skins_data = data
         fragment = section.to_html(data)
-        if not fragment and section.KEY == "ranked" and not error:
-            fragment = ranked.empty_html()
+        if not fragment and not error:
+            # 任何區塊都可以「選擇性」提供 empty_html()，用來在無資料
+            # 但非錯誤時顯示說明（例如排位：未打排位是常態而非異常）。
+            # 用 getattr 而非硬編區塊名稱，新增區塊時不必回來改這裡。
+            empty_html = getattr(section, "empty_html", None)
+            if empty_html:
+                fragment = empty_html()
         if fragment:
             fragments.append(fragment)
         as_dict = section.to_dict(data)
         if as_dict is not None:
             payload[section.KEY] = as_dict
+
+    account_name = summary_data.get("account_name")
+    account_id = summary_data.get("account_id")
 
     if skins_data is not None:
         figures.append(page.Figure(f"{skins_data.skin_count:,}", "造型", lead=True))
@@ -95,13 +107,20 @@ def build_report(client, generated_at: datetime, keys: list[str] | None = None):
         }
         # champions 提到頂層並移除巢狀的 skins key，維持與 schema 1 相同的形狀
         payload["champions"] = payload.pop("skins", {}).get("champions", [])
+    elif account_name:
+        # 非 skins 子命令（loot／challenges／matches／ranked）沒有機會
+        # 打造型 endpoint，但 summary 這次呼叫已經拿到帳號名稱——
+        # account key 不該只在 skins 子命令才存在。
+        payload["account"] = {"summonerName": account_name, "summonerId": account_id}
 
     figures.extend(summary_section.figures(summary_data))
     summary_dict = summary_section.to_dict(summary_data)
     if summary_dict:
         payload["summary"] = summary_dict
 
-    name = skins_data.summoner_name if skins_data else "未知帳號"
+    # 優先用 summary 取得的帳號名稱，skins_data 作為後備——非 skins
+    # 子命令沒有 skins_data，若又只看它就會永遠顯示「未知帳號」。
+    name = account_name or (skins_data.summoner_name if skins_data else None) or "未知帳號"
     total = skins_data.skin_count if skins_data else 0
 
     html = page.render_page(

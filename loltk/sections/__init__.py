@@ -10,9 +10,14 @@
     to_dict(data)       轉成 JSON 可序列化結構；data 為 None 時回傳 None。
     to_html(data)       回傳 HTML 片段；data 為 None 時回傳空字串。
 
-例外的隔離邊界只有 safe_fetch 一處。把它收在這裡而不是散落在六個
-fetch 裡，既避免六份重複的例外處理，也讓「哪裡會吞掉錯誤」只有一個
-地方要稽核。
+例外的隔離邊界主要只有 safe_fetch 一處，把它收在這裡而不是散落在
+六個 fetch 裡，既避免六份重複的例外處理，也讓「哪裡會吞掉錯誤」
+集中在一個地方要稽核。
+
+唯一的例外是 summary：它的三個 endpoint 是逐欄位容錯（單一 endpoint
+失敗不該讓其他兩個數字也消失），這與逐區塊層次不同，因此有自己的
+_get()。但它一樣不能靜默——summary.fetch() 回傳 (data, errors)，
+errors 由 cli.build_report 併入 skipped，稽核時記得一併檢查。
 """
 
 from ..lcu import LcuError

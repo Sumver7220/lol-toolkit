@@ -19,41 +19,67 @@ class FakeClient:
 
 
 ALL_OK = {
-    "current-summoner": {"summonerLevel": 467},
+    "current-summoner": {"summonerLevel": 467, "displayName": "", "gameName": "Tester",
+                         "summonerId": 42},
     "honor": {"honorLevel": 5},
     "wallet": {"RP": 1286, "lol_blue_essence": 458965, "lol_orange_essence": 3890},
 }
 
 
 def test_fetches_all_three():
-    d = sec.fetch(FakeClient(ALL_OK))
+    d, errors = sec.fetch(FakeClient(ALL_OK))
     assert d["level"] == 467
     assert d["honor"] == 5
     assert d["blue_essence"] == 458965
     assert d["rp"] == 1286
+    assert errors == []
 
 
 def test_one_endpoint_failing_does_not_kill_the_others():
     m = dict(ALL_OK, honor=RuntimeError("boom"))
     m["honor"] = RuntimeError("boom")
-    d = sec.fetch(FakeClient(m))
+    d, errors = sec.fetch(FakeClient(m))
     assert d["level"] == 467
     assert d["honor"] is None
     assert d["blue_essence"] == 458965
+    assert len(errors) == 1
 
 
 def test_all_endpoints_failing_returns_all_none_not_exception():
     m = {k: RuntimeError("boom") for k in ALL_OK}
-    d = sec.fetch(FakeClient(m))
-    assert set(d.values()) == {None}
+    d, errors = sec.fetch(FakeClient(m))
+    assert set(v for k, v in d.items() if k not in ("account_name", "account_id")) == {None}
+    assert d["account_name"] is None
+    assert len(errors) == 3
 
 
 def test_missing_field_becomes_none_not_zero():
     """缺值必須是 None——0 會被誤讀為真的沒有。"""
     m = dict(ALL_OK)
     m["honor"] = {}
-    d = sec.fetch(FakeClient(m))
+    d, errors = sec.fetch(FakeClient(m))
     assert d["honor"] is None
+    assert errors == []
+
+
+def test_account_name_prefers_game_name_over_display_name():
+    """實測帳號 displayName 為空字串、gameName 才有值，因此以 gameName 優先。"""
+    d, _ = sec.fetch(FakeClient(ALL_OK))
+    assert d["account_name"] == "Tester"
+
+
+def test_account_name_falls_back_to_display_name():
+    m = dict(ALL_OK)
+    m["current-summoner"] = {"summonerLevel": 467, "displayName": "顯示名", "gameName": ""}
+    d, _ = sec.fetch(FakeClient(m))
+    assert d["account_name"] == "顯示名"
+
+
+def test_failing_endpoint_is_reported_not_silently_dropped():
+    """summary 是逐欄位容錯，但失敗仍必須回報，不能是靜默的例外邊界。"""
+    m = dict(ALL_OK, honor=RuntimeError("wallet endpoint renamed"))
+    d, errors = sec.fetch(FakeClient(m))
+    assert any("wallet endpoint renamed" in e for e in errors)
 
 
 def test_figures_omit_missing_values_entirely():

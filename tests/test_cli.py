@@ -231,6 +231,8 @@ def test_build_report_with_empty_data_still_produces_page():
 def test_keys_filter_limits_sections():
     html, data, _ = cli.build_report(SectionClient(), AT2, keys=["skins"])
     assert "loot" not in data
+    assert "champions" in data
+    assert "account" in data
 
 
 def test_json_keeps_champions_shape_unchanged():
@@ -275,6 +277,38 @@ def test_pause_swallows_eof_error_when_stdin_closed(monkeypatch):
 
     monkeypatch.setattr("builtins.input", raise_eof)
     cli._pause(quiet=False)  # 不應拋出例外
+
+
+def test_quiet_still_reports_skipped_sections_to_stderr(monkeypatch, tmp_path, capsys):
+    """--quiet 是 README 記載的腳本用法，失敗區塊的訊息不能因此消失——
+    這是整個錯誤處理故事的機制，必須有端到端測試涵蓋，而不是只測
+    build_report 本身。"""
+
+    class Boom(SectionClient):
+        def get_json(self, path):
+            if "player-loot" in path:
+                raise RuntimeError("loot exploded")
+            return super().get_json(path)
+
+    monkeypatch.setattr(cli.lcu.LcuClient, "connect", staticmethod(lambda: Boom()))
+    code = cli.main(["all", "--quiet", "--no-open", "--output", str(tmp_path)])
+    assert code == 0
+    err = capsys.readouterr().err
+    assert "造型碎片" in err
+    assert "loot exploded" in err
+
+
+def test_non_skins_subcommand_still_has_account_in_json(monkeypatch, tmp_path):
+    """loot／challenges／matches／ranked 等子命令沒有機會打造型 endpoint，
+    但 summary 的 current-summoner 呼叫已經拿得到帳號名稱，account key
+    不該只在 skins 子命令才存在。"""
+    monkeypatch.setattr(
+        cli.lcu.LcuClient, "connect", staticmethod(lambda: SectionClient())
+    )
+    code = cli.main(["loot", "--quiet", "--no-open", "--output", str(tmp_path)])
+    assert code == 0
+    data = json.loads((tmp_path / "lol_skins.json").read_text(encoding="utf-8"))
+    assert data.get("account", {}).get("summonerName") == "T"
 
 
 def test_command_dispatch_uses_registered_handler(monkeypatch):
