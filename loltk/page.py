@@ -1,6 +1,6 @@
 """頁面外殼：把各功能區塊組裝成一份自包含的 HTML。
 
-只認識區塊契約（一段 HTML 字串），不認識任何區塊的內容。
+只認識區塊契約（Block：key／title／count／html），不認識任何區塊的內容。
 """
 
 from dataclasses import dataclass
@@ -30,17 +30,51 @@ def _figures_html(figures: list[Figure]) -> str:
     return f'<div class="figures">{cells}</div>'
 
 
+@dataclass(frozen=True)
+class Block:
+    """頁面上的一個區塊。
+
+    page 只認識這個契約，不認識任何區塊的內容——html 是區塊模組
+    自己產生的片段，這裡只負責包外殼與產生導覽列。
+    """
+
+    key: str          # 錨點 id 取自這裡：sec-{key}
+    title: str        # 導覽列顯示的短標籤
+    count: str | None  # 已格式化的計數（含千分位）；None 表示不顯示數字
+    html: str
+
+
+def _nav_html(blocks: list[Block]) -> str:
+    """區塊數少於兩個時不輸出——一個項目的導覽沒有意義。"""
+    if len(blocks) < 2:
+        return ""
+    items = "".join(
+        f'<a class="nv" href="#sec-{esc(b.key)}">{esc(b.title)}'
+        + (f'<b class="num">{esc(b.count)}</b>' if b.count else "")
+        + "</a>"
+        for b in blocks
+    )
+    return (
+        f'<nav class="nav" aria-label="區塊導覽">'
+        f'<div class="wrap">{items}</div></nav>'
+    )
+
+
 def render_page(
     *,
     summoner_name: str,
     generated_at: datetime,
     figures: list[Figure],
-    sections: list[str],
+    blocks: list[Block],
     total_tiles: int,
 ) -> str:
-    """組裝完整頁面。sections 為各區塊已產生的 HTML 片段，依序排列。"""
+    """組裝完整頁面。blocks 依序排列，每個包進自己的錨點外殼。"""
     stamp = generated_at.strftime("%Y-%m-%d %H:%M")
-    body = "\n".join(s for s in sections if s)
+    shown = [b for b in blocks if b.html]
+    body = "\n".join(
+        f'<section class="anchor" id="sec-{esc(b.key)}">{b.html}</section>'
+        for b in shown
+    )
     script = SCRIPT.replace("__TOTAL__", str(total_tiles))
     return f"""<!DOCTYPE html>
 <html lang="zh-Hant">
@@ -58,6 +92,7 @@ def render_page(
 <div class="hr"></div>
 {_figures_html(figures)}
 </header></div>
+{_nav_html(shown)}
 {body}
 <div class="wrap"><footer>lol-toolkit · 唯讀 · 不含他人資料</footer></div>
 <script>{script}</script>

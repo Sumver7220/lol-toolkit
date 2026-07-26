@@ -10,7 +10,7 @@ def build(**kw):
         summoner_name="測試召喚師",
         generated_at=AT,
         figures=[page.Figure("486", "造型", lead=True), page.Figure("173", "英雄")],
-        sections=["<section id='x'>內容</section>"],
+        blocks=[page.Block("x", "造型", "486", "<section id='x'>內容</section>")],
         total_tiles=486,
     )
     args.update(kw)
@@ -88,8 +88,11 @@ def test_total_is_templated_into_script():
     assert "TOTAL=486" not in html
 
 
-def test_sections_are_inserted_in_order():
-    html = build(sections=["<i>一</i>", "<i>二</i>"])
+def test_blocks_are_inserted_in_order():
+    html = build(blocks=[
+        page.Block("a", "甲", None, "<i>一</i>"),
+        page.Block("b", "乙", None, "<i>二</i>"),
+    ])
     assert html.index("<i>一</i>") < html.index("<i>二</i>")
 
 
@@ -110,6 +113,60 @@ def test_empty_figures_still_renders():
     html = build(figures=[])
     assert "<!DOCTYPE html>" in html
     assert "測試召喚師" in html
+
+
+def test_nav_is_emitted_with_two_or_more_blocks():
+    html = build(blocks=[
+        page.Block("skins", "造型", "486", "<i>一</i>"),
+        page.Block("loot", "碎片", "89", "<i>二</i>"),
+    ])
+    assert 'class="nav"' in html
+    assert 'href="#sec-skins"' in html
+    assert 'href="#sec-loot"' in html
+
+
+def test_nav_is_omitted_with_a_single_block():
+    """`loltk loot` 這類單一子命令：一個項目的導覽沒有意義。"""
+    html = build(blocks=[page.Block("loot", "碎片", "89", "<i>一</i>")])
+    assert 'class="nav"' not in html
+
+
+def test_every_block_is_wrapped_in_an_anchor_matching_its_nav_href():
+    html = build(blocks=[
+        page.Block("skins", "造型", "486", "<i>一</i>"),
+        page.Block("loot", "碎片", None, "<i>二</i>"),
+    ])
+    for key in ("skins", "loot"):
+        assert f'<section class="anchor" id="sec-{key}">' in html
+        assert f'href="#sec-{key}"' in html
+
+
+def test_block_without_count_emits_no_number_element():
+    html = build(blocks=[
+        page.Block("challenges", "挑戰", None, "<i>一</i>"),
+        page.Block("ranked", "排位", None, "<i>二</i>"),
+    ])
+    assert 'class="nav"' in html
+    # 尾隨空白是必要的：<b 會被 <body> 命中，任何有效頁面都不可能通過
+    assert "<b " not in html
+
+
+def test_blocks_with_empty_html_are_dropped_from_page_and_nav():
+    html = build(blocks=[
+        page.Block("skins", "造型", "486", "<i>一</i>"),
+        page.Block("loot", "碎片", "0", ""),
+    ])
+    assert "sec-loot" not in html
+    assert "sec-skins" in html
+
+
+def test_nav_escapes_block_fields():
+    html = build(blocks=[
+        page.Block("a", 'x" onclick="evil()', None, "<i>一</i>"),
+        page.Block("b", "乙", None, "<i>二</i>"),
+    ])
+    assert 'onclick="evil()' not in html
+    assert "&quot;" in html
 
 
 from loltk.sections import _tile

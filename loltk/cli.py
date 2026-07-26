@@ -69,7 +69,7 @@ def build_report(client, generated_at: datetime, keys: list[str] | None = None):
 
     summary_data, summary_errors = summary_section.fetch(client)
     figures = []
-    fragments = []
+    blocks = []
     skipped = [(summary_section.TITLE, err) for err in summary_errors]
     payload = {"schemaVersion": SCHEMA_VERSION, "generatedAt": generated_at.isoformat()}
 
@@ -93,7 +93,16 @@ def build_report(client, generated_at: datetime, keys: list[str] | None = None):
             if empty_html:
                 fragment = empty_html()
         if fragment:
-            fragments.append(fragment)
+            # 沿用 empty_html 的 getattr 慣例：新增區塊時不必回來改這裡
+            counter = getattr(section, "nav_count", None)
+            blocks.append(
+                page.Block(
+                    key=section.KEY,
+                    title=getattr(section, "NAV_LABEL", section.TITLE),
+                    count=counter(data) if counter else None,
+                    html=fragment,
+                )
+            )
         as_dict = section.to_dict(data)
         if as_dict is not None:
             payload[section.KEY] = as_dict
@@ -130,7 +139,7 @@ def build_report(client, generated_at: datetime, keys: list[str] | None = None):
         summoner_name=name,
         generated_at=generated_at,
         figures=figures,
-        sections=fragments,
+        blocks=blocks,
         total_tiles=total,
     )
     return html, payload, skipped
