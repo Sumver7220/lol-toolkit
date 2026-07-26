@@ -163,6 +163,19 @@ footer{padding:var(--s-8) 0 var(--s-16);color:var(--text-faint);font-size:var(--
   border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:var(--s-3)}
 .block-h .sub{font-family:var(--font-text);font-size:var(--fs-xs);font-weight:400;
   color:var(--text-muted);letter-spacing:.02em}
+
+/* --- 模式 6：進度指標 --- */
+.progs{display:grid;gap:var(--s-4);grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.prog{border:1px solid var(--line);padding:var(--s-4);background:var(--surface)}
+.prog-h{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s-3)}
+.prog-n{font-size:var(--fs-sm)}
+.prog-lv{font-family:var(--font-display);font-size:var(--fs-micro);
+  letter-spacing:var(--track-wide);color:var(--accent)}
+.prog-bar{height:3px;background:var(--line-soft);margin:var(--s-3) 0 var(--s-2);
+  overflow:hidden}
+.prog-bar i{display:block;height:100%;background:var(--accent)}
+.prog-v{font-family:var(--font-display);font-size:var(--fs-xs);color:var(--text-faint);
+  font-variant-numeric:tabular-nums}
 """
 
 SCRIPT = """const TOTAL=__TOTAL__;
