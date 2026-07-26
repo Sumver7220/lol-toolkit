@@ -256,9 +256,15 @@ if(navs.length){
  const byId=new Map(navs.map(a=>[a.getAttribute('href').slice(1),a]));
  const anchors=[...document.querySelectorAll('.anchor')];
  const seen=new Set();
+ /* 頁尾露出＝已經捲到底。最後一個區塊若比 60% 視窗高矮（例如排位的空狀態
+    只有一行），它永遠進不了下面那條觀察帶，金線會卡在倒數第二個區塊。
+    捲到底時使用者看的就是最後一個區塊，這個語意比「誰進了觀察帶」更貼近
+    實際，因此用它覆蓋。 */
+ let atEnd=false;
  const mark=()=>{
   let cur=null;
-  for(const a of anchors){if(seen.has(a.id)){cur=a.id;break}}
+  if(atEnd&&anchors.length)cur=anchors[anchors.length-1].id;
+  else for(const a of anchors){if(seen.has(a.id)){cur=a.id;break}}
   for(const a of navs){
    const on=cur!==null&&byId.get(cur)===a;
    a.classList.toggle('on',on);
@@ -273,6 +279,15 @@ if(navs.length){
   mark();
  },{rootMargin:(-NAVH)+'px 0px -60% 0px'});
  for(const a of anchors)io.observe(a);
+ /* 哨兵用第二個觀察器而非捲動事件：捲動事件會形成回呼迴圈。預設 rootMargin
+    ——要的就是「頁尾進到視窗裡」這個原始語意，不要任何偏移。 */
+ const foot=document.querySelector('footer');
+ if(foot){
+  new IntersectionObserver(es=>{
+   for(const e of es)atEnd=e.isIntersecting;
+   mark();
+  }).observe(foot);
+ }
 }
 /* 圖像牆折疊：預設只露約半個視窗高，按鈕展開。 */
 const RATIO=.5,MARGIN=2,MINROWS=2;

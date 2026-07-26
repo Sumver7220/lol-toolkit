@@ -80,6 +80,24 @@ def test_nav_uses_observer_not_a_scroll_loop():
     assert "addEventListener('scroll'" not in theme.SCRIPT
 
 
+def test_last_section_is_reachable_via_a_footer_sentinel():
+    """最後一個區塊常比 60% 視窗高矮,捲到底也進不了觀察帶。
+
+    沒有這個哨兵,金線會永遠卡在倒數第二個區塊。實測差額:
+    1512x900 短 319px、390x844 短 286px、1920x1080 短 428px。
+    """
+    assert "querySelector('footer')" in theme.SCRIPT
+    assert "atEnd" in theme.SCRIPT
+    # 哨兵必須是第二個觀察器,不能退回捲動事件(見上一條測試)
+    assert theme.SCRIPT.count("new IntersectionObserver") == 2
+
+
+def test_footer_sentinel_degrades_quietly_when_there_is_no_footer():
+    """取不到頁尾時只是少了保底,不能讓整段導覽列邏輯掛掉。"""
+    tail = theme.SCRIPT[theme.SCRIPT.index("querySelector('footer')"):]
+    assert "if(foot){" in tail[: tail.index("}\n")]
+
+
 def test_observer_margin_reads_the_nav_height_from_the_token():
     """--nav-h 改值時，高亮的切換線必須跟著移動。
 
