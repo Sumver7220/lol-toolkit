@@ -22,7 +22,7 @@ ALL_OK = {
     "current-summoner": {"summonerLevel": 467, "displayName": "", "gameName": "Tester",
                          "summonerId": 42},
     "honor": {"honorLevel": 5},
-    "wallet": {"RP": 1286, "lol_blue_essence": 458965, "lol_orange_essence": 3890},
+    "wallet": {"RP": 1000, "lol_blue_essence": 400000, "lol_orange_essence": 2000},
 }
 
 
@@ -30,8 +30,8 @@ def test_fetches_all_three():
     d, errors = sec.fetch(FakeClient(ALL_OK))
     assert d["level"] == 467
     assert d["honor"] == 5
-    assert d["blue_essence"] == 458965
-    assert d["rp"] == 1286
+    assert d["blue_essence"] == 400000
+    assert d["rp"] == 1000
     assert errors == []
 
 
@@ -41,7 +41,7 @@ def test_one_endpoint_failing_does_not_kill_the_others():
     d, errors = sec.fetch(FakeClient(m))
     assert d["level"] == 467
     assert d["honor"] is None
-    assert d["blue_essence"] == 458965
+    assert d["blue_essence"] == 400000
     assert len(errors) == 1
 
 
@@ -83,7 +83,7 @@ def test_failing_endpoint_is_reported_not_silently_dropped():
 
 
 def test_figures_omit_missing_values_entirely():
-    d = {"level": 467, "honor": None, "blue_essence": None, "rp": 1286,
+    d = {"level": 467, "honor": None, "blue_essence": None, "rp": 1000,
          "orange_essence": None}
     labels = [f.label for f in sec.figures(d)]
     assert "等級" in labels
@@ -93,9 +93,9 @@ def test_figures_omit_missing_values_entirely():
 
 
 def test_figures_format_thousands_separator():
-    d = {"level": None, "honor": None, "blue_essence": 458965, "rp": None,
+    d = {"level": None, "honor": None, "blue_essence": 400000, "rp": None,
          "orange_essence": None}
-    assert sec.figures(d)[0].value == "458,965"
+    assert sec.figures(d)[0].value == "400,000"
 
 
 def test_figures_empty_when_nothing_available():

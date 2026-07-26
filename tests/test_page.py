@@ -7,7 +7,7 @@ AT = datetime(2026, 7, 27, 14, 30, tzinfo=timezone(timedelta(hours=8)))
 
 def build(**kw):
     args = dict(
-        summoner_name="SumverMizz",
+        summoner_name="測試召喚師",
         generated_at=AT,
         figures=[page.Figure("486", "造型", lead=True), page.Figure("173", "英雄")],
         sections=["<section id='x'>內容</section>"],
@@ -76,7 +76,7 @@ def test_script_guards_missing_dom_elements():
 
 def test_poster_shows_name_time_and_figures():
     html = build()
-    assert "SumverMizz" in html
+    assert "測試召喚師" in html
     assert "2026-07-27 14:30" in html
     assert ">486<" in html and ">造型<" in html
     assert 'class="fig lead"' in html
@@ -109,7 +109,7 @@ def test_escapes_quotes_in_attributes():
 def test_empty_figures_still_renders():
     html = build(figures=[])
     assert "<!DOCTYPE html>" in html
-    assert "SumverMizz" in html
+    assert "測試召喚師" in html
 
 
 from loltk.sections import _tile
