@@ -48,6 +48,7 @@ STYLE = """
   --fig-gap:1px; --fig-pad:var(--s-6);
   --tile-gap:2px; --tile-min:132px;
   --bar-h:58px;
+  --nav-h:44px;
 }
 
 *{box-sizing:border-box}
@@ -58,6 +59,27 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
   background-size:3px 3px}
 .wrap{max-width:1680px;margin:0 auto;padding:0 var(--s-6)}
 .num{font-family:var(--font-display);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+
+/* --- 外殼：全站區塊導覽 --- */
+/* z-index 必須高於 .bar 的 40，否則造型區塊的搜尋列會蓋住導覽列。 */
+.nav{position:sticky;top:0;z-index:50;
+  background:color-mix(in srgb,var(--bg) 92%,transparent);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;gap:var(--s-2);align-items:stretch;height:var(--nav-h)}
+.nv{display:flex;align-items:center;gap:6px;padding:0 var(--s-3);
+  color:var(--text-muted);text-decoration:none;font-size:var(--fs-sm);
+  border-bottom:2px solid transparent;white-space:nowrap}
+.nv:hover{color:var(--text)}
+/* 作用中項目的金線是必要的非顏色線索，不能只靠文字顏色區分。 */
+.nv.on{color:var(--text);border-bottom-color:var(--accent)}
+.nv:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.nv b{font-family:var(--font-display);font-variant-numeric:tabular-nums;
+  font-weight:400;font-size:var(--fs-xs);color:var(--text-faint)}
+.nv.on b{color:var(--accent)}
+.anchor{scroll-margin-top:var(--nav-h)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 
 /* --- 模式 A：海報頁首（外殼，所有功能共用） --- */
 .poster{position:relative;margin-top:var(--s-8);border:1px solid var(--poster-border);
@@ -82,7 +104,8 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
   color:var(--text-muted);margin-top:var(--s-2)}
 
 /* --- 外殼：工具列 --- */
-.bar{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 92%,transparent);
+.bar{position:sticky;top:var(--nav-h);z-index:40;
+  background:color-mix(in srgb,var(--bg) 92%,transparent);
   backdrop-filter:blur(14px);border-bottom:1px solid var(--line);margin-top:var(--s-12)}
 .bar .wrap{display:flex;gap:var(--s-3);align-items:center;min-height:var(--bar-h)}
 #q{flex:1;background:var(--surface-2);border:1px solid var(--line);color:var(--text);
@@ -154,6 +177,8 @@ footer{padding:var(--s-8) 0 var(--s-16);color:var(--text-faint);font-size:var(--
   .bar .wrap{flex-wrap:wrap;padding-top:var(--s-2);padding-bottom:var(--s-2)}
   #q{flex:1 1 100%}
   .tally{margin-left:auto}
+  .nv b{display:none}
+  .nv{padding:0 var(--s-2)}
 }
 
 /* --- 區塊標題 --- */
@@ -205,6 +230,31 @@ footer{padding:var(--s-8) 0 var(--s-16);color:var(--text-faint);font-size:var(--
 """
 
 SCRIPT = """const TOTAL=__TOTAL__;
+const NAVH=parseFloat(getComputedStyle(document.documentElement)
+ .getPropertyValue('--nav-h'))||0;
+const navs=[...document.querySelectorAll('.nv')];
+if(navs.length){
+ const byId=new Map(navs.map(a=>[a.getAttribute('href').slice(1),a]));
+ const anchors=[...document.querySelectorAll('.anchor')];
+ const seen=new Set();
+ const mark=()=>{
+  let cur=null;
+  for(const a of anchors){if(seen.has(a.id)){cur=a.id;break}}
+  for(const a of navs){
+   const on=cur!==null&&byId.get(cur)===a;
+   a.classList.toggle('on',on);
+   if(on)a.setAttribute('aria-current','true');
+   else a.removeAttribute('aria-current');
+  }
+ };
+ const io=new IntersectionObserver(es=>{
+  for(const e of es){
+   if(e.isIntersecting)seen.add(e.target.id);else seen.delete(e.target.id);
+  }
+  mark();
+ },{rootMargin:(-NAVH)+'px 0px -60% 0px'});
+ for(const a of anchors)io.observe(a);
+}
 const q=document.getElementById('q');
 if(q){
  const tiles=[...document.querySelectorAll('#skin-wall .t')],
