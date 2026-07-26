@@ -105,7 +105,9 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
   color:var(--text-muted);margin-top:var(--s-2)}
 
 /* --- 外殼：工具列 --- */
-.bar{position:sticky;top:var(--nav-h);z-index:40;
+/* scroll-margin-top：英雄索引挑完會捲回這條列，沒有這條偏移落點會被
+   導覽列蓋住。（尚未釘住時才有作用——已釘住的 sticky 元素本來就在位置上。） */
+.bar{position:sticky;top:var(--nav-h);z-index:40;scroll-margin-top:var(--nav-h);
   background:color-mix(in srgb,var(--bg) 92%,transparent);
   backdrop-filter:blur(14px);border-bottom:1px solid var(--line);margin-top:var(--s-12)}
 .bar .wrap{display:flex;gap:var(--s-3);align-items:center;min-height:var(--bar-h)}
@@ -160,9 +162,6 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
 
 /* --- 圖像牆折疊（屬於 .wall 模式本身，所有牆共用） --- */
 .wall-box{position:relative;scroll-margin-top:var(--nav-h)}
-/* 造型牆上方還有一條 sticky 搜尋列，只讓開導覽列高度會蓋住第一排 tile。
-   偏移交給 CSS 宣告，JS 的 scrollIntoView 就不必知道頁面上有哪些 sticky。 */
-.sec-skins .wall-box{scroll-margin-top:calc(var(--nav-h) + var(--bar-h))}
 .wall-box.folded .wall{overflow:hidden}
 /* 遮罩疊在 .wall-box 而非 .wall 上——後者裁切內容。bottom 讓開按鈕高度。 */
 .wall-box.folded::after{content:"";position:absolute;left:0;right:0;
@@ -285,36 +284,50 @@ for(const box of document.querySelectorAll('.wall-box')){
  /* forced 是搜尋造成的暫時展開（按鈕整個藏起來），open 是使用者按的
     （按鈕留著讓他收回去）。兩者混用會出現按鈕文字閃動。 */
  let open=false,forced=false;
+ /* 把被裁掉的 tile 移出 Tab 順序：overflow:hidden 只是視覺裁切，聚焦到
+    看不見的 tile 會讓折疊視窗自己捲動且捲不回來，而且展開按鈕在 DOM 上
+    排在牆之後，不這樣做要按幾百次 Tab 才到得了。tabIndex=-1 不影響點擊，
+    正是視覺隱藏內容該有的語意。n 為保留在 Tab 順序裡的 tile 數。 */
+ const seat=n=>{const ts=wall.children;
+  for(let i=0;i<ts.length;i++)ts[i].tabIndex=i<n?0:-1};
  const paint=()=>{
   /* 先處理展開狀態再量測：搜尋時第一張 tile 可能帶著 .hide，
      量到的高度是 0，先量就會提早 return 把 maxHeight 留在原地。 */
   if(forced||open){
-   box.classList.remove('folded');wall.style.maxHeight='';
+   box.classList.remove('folded');wall.style.maxHeight='';seat(Infinity);
    btn.hidden=forced;return;
   }
   const t=box.querySelector('.t'),cs=getComputedStyle(wall);
   const h=t?t.getBoundingClientRect().height:0;
-  if(!h){btn.hidden=true;return}
+  /* 量不到高度（牆是空的或整面都藏起來）就當作沒有折疊，狀態一併清乾淨。 */
+  if(!h){btn.hidden=true;box.classList.remove('folded');wall.style.maxHeight='';
+   seat(Infinity);return}
   const gap=parseFloat(cs.rowGap)||0,pad=parseFloat(cs.paddingTop)||0;
-  /* tile 是正方形，欄寬等於 tile 高，欄數才能從寬度反推。 */
+  /* tile 是正方形，欄寬等於 tile 高，欄數才能從寬度反推；.wall 用 gap
+     簡寫，兩軸相等，所以這裡拿 rowGap 當欄距是成立的。 */
   const cols=Math.max(1,Math.round((wall.clientWidth+gap)/(h+gap)));
   const rows=Math.ceil(wall.children.length/cols);
   const fold=Math.max(MINROWS,Math.floor((innerHeight*RATIO+gap)/(h+gap)));
   /* 只差幾排就折起來反而多一次點擊，不划算。 */
   if(rows<fold+MARGIN){
-   btn.hidden=true;box.classList.remove('folded');wall.style.maxHeight='';return;
+   btn.hidden=true;box.classList.remove('folded');wall.style.maxHeight='';
+   seat(Infinity);return;
   }
   btn.hidden=false;box.classList.add('folded');
   wall.style.maxHeight=(pad+fold*h+(fold-1)*gap)+'px';
+  seat(fold*cols);
  };
  btn.addEventListener('click',()=>{
   const was=open;open=!open;
   btn.textContent=open?'收起':label;
   btn.setAttribute('aria-expanded',open?'true':'false');
   paint();
-  /* 收起時牆會縮短，捲軸位置會落在後面的區塊，捲回牆頂。讓開多少由
-     CSS 的 scroll-margin-top 宣告，這裡不必知道上方有哪些 sticky。 */
-  if(was)box.scrollIntoView({block:'start'});
+  /* 收起時牆會縮短，捲軸位置會落在後面的區塊，捲回這個區塊的開頭。捲的是
+     .anchor 外殼而不是牆本身：外殼上方若有 sticky 工具列，捲到外殼開頭時
+     那條列就在它自然的位置上，牆從它下方開始，這裡不必知道它有多高（窄螢幕
+     會換行變高）。也不能改捲那條列本身——已經釘住的 sticky 元素其 rect 永遠
+     等於落點，scrollIntoView 會判定「已經到位」而完全不捲動。 */
+  if(was)(box.closest('.anchor')||box).scrollIntoView({block:'start'});
  });
  unfold.set(wall.id,v=>{forced=v;paint()});
  repaint.push(paint);

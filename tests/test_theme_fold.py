@@ -58,16 +58,32 @@ def test_searching_unfolds_the_skin_wall():
 
 
 def test_collapsing_scrolls_back_clear_of_the_sticky_chrome():
-    """偏移量交給 CSS 宣告，JS 不必知道頁面上有哪些 sticky 元素。"""
-    # 綁在 box 上才算數：SCRIPT 裡另有一處 .bar 的 scrollIntoView，
-    # 只比對裸的 scrollIntoView({block:'start'}) 會被那一處矇混過關。
-    assert "box.scrollIntoView({block:'start'})" in theme.SCRIPT
-    # .wall-box 那條同時寫了 position，因此比對規則內容而非整條字串。
-    base = theme.STYLE[theme.STYLE.index("\n.wall-box{") :]
-    base = base[: base.index("}")]
-    assert "scroll-margin-top:var(--nav-h)" in base
-    # 造型牆上方多一條 sticky 搜尋列，只讓開導覽列高度會蓋住第一排
-    assert (
-        ".sec-skins .wall-box{scroll-margin-top:calc(var(--nav-h) + var(--bar-h))}"
-        in theme.STYLE
-    )
+    """偏移量交給 CSS 宣告，JS 不必知道頁面上有哪些 sticky 元素。
+
+    捲的是 .anchor 外殼：上方若有 sticky 工具列，捲到外殼開頭時那條列
+    就在它自然的位置上，牆從它下方開始。不能改捲那條列本身——已經釘住
+    的 sticky 元素其 rect 永遠等於落點，scrollIntoView 會判定「已經到位」
+    而完全不捲動（實測捲軸 5000 → 5000，牆頂被蓋掉 289px）。
+    """
+    assert "(box.closest('.anchor')||box).scrollIntoView({block:'start'})" in theme.SCRIPT
+    # 落點偏移由外殼自己宣告；.wall-box 那條是沒有外殼時的退路。
+    assert ".anchor{scroll-margin-top:var(--nav-h)}" in theme.STYLE
+    rule = theme.STYLE[theme.STYLE.index("\n.wall-box{") :]
+    rule = rule[: rule.index("}")]
+    assert "scroll-margin-top:var(--nav-h)" in rule
+    # 反向：不得用固定 token 描述會隨螢幕寬度換行變高的工具列
+    assert "calc(var(--nav-h) + var(--bar-h))" not in theme.STYLE
+
+
+def test_folded_tiles_leave_the_tab_order():
+    """回歸測試：overflow:hidden 只是視覺裁切。
+
+    被裁掉的 tile 是真的 <button>，仍可聚焦；而且 overflow:hidden 容器
+    會為了露出被聚焦的元素自行捲動，使用者會看到折疊視窗內部整片位移
+    且捲不回去。
+    """
+    assert "tabIndex" in theme.SCRIPT
+    # 三條「不折疊」路徑都要還原，少一條就會留下聚焦得到卻看不見的 tile
+    assert theme.SCRIPT.count("seat(Infinity)") == 3
+    # 折疊路徑只留可見的那幾排
+    assert "seat(fold*cols)" in theme.SCRIPT

@@ -30,6 +30,13 @@ def test_anchors_offset_scroll_by_nav_height():
     assert ".anchor{scroll-margin-top:var(--nav-h)}" in theme.STYLE
 
 
+def test_search_bar_declares_its_own_scroll_offset():
+    """英雄索引挑完會捲回 .bar，沒有這條偏移落點會被導覽列蓋住。"""
+    bar = theme.STYLE[theme.STYLE.index(".bar{"):]
+    bar = bar[: bar.index("}")]
+    assert "scroll-margin-top:var(--nav-h)" in bar
+
+
 def test_active_nav_item_has_a_non_colour_cue():
     """不能只靠顏色區分作用中項目。"""
     assert ".nv.on{" in theme.STYLE
@@ -71,3 +78,14 @@ def test_nav_marks_current_section_for_assistive_tech():
 def test_nav_uses_observer_not_a_scroll_loop():
     assert "IntersectionObserver" in theme.SCRIPT
     assert "addEventListener('scroll'" not in theme.SCRIPT
+
+
+def test_observer_margin_reads_the_nav_height_from_the_token():
+    """--nav-h 改值時，高亮的切換線必須跟著移動。
+
+    其餘斷言都在 CSS 上,SCRIPT 這側若沒人守著,NAVH 被當成死碼移除
+    也不會有測試變紅。
+    """
+    assert "NAVH" in theme.SCRIPT
+    assert "rootMargin" in theme.SCRIPT
+    assert "getPropertyValue('--nav-h')" in theme.SCRIPT
