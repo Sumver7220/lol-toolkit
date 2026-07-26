@@ -15,16 +15,17 @@ class FakeClient:
         return self.payload
 
 
-def game(win=True, k=5, d=2, a=7, mode="CLASSIC", dur=1800, champ=1):
+def game(win=True, k=5, d=2, a=7, mode="KIWI", dur=1800, champ=1, queue_id=2400, map_id=12):
     return {
         "gameMode": mode, "gameDuration": dur, "gameCreationDate": "2026-07-26T20:00:00Z",
+        "queueId": queue_id, "mapId": map_id,
         "participants": [{"championId": champ,
                           "stats": {"win": win, "kills": k, "deaths": d, "assists": a}}],
     }
 
 
 def multiplayer_game(my_participant_id, my_puuid="p-1", win=True, k=5, d=2, a=7,
-                      mode="CLASSIC", dur=1800):
+                      mode="KIWI", dur=1800, queue_id=2400, map_id=12):
     """十人陣列的真實形狀（見 participantIdentities 的實測結構）：
     participants 與 participantIdentities 分別用 participantId 對應，
     自己不保證在陣列的第一格。"""
@@ -48,6 +49,7 @@ def multiplayer_game(my_participant_id, my_puuid="p-1", win=True, k=5, d=2, a=7,
         })
     return {
         "gameMode": mode, "gameDuration": dur, "gameCreationDate": "2026-07-26T20:00:00Z",
+        "queueId": queue_id, "mapId": map_id,
         "participants": participants,
         "participantIdentities": identities,
     }
@@ -122,22 +124,60 @@ def test_html_states_the_ten_game_limit():
     assert "不保留" in html or "完整歷史" in html
 
 
-def test_html_translates_common_game_modes():
-    d = sec.fetch(FakeClient(payload([game(mode="ARAM")])))
+def test_html_shows_queue_name_for_known_queue_id():
+    """已知的佇列 ID（如 450 ARAM）應顯示中文名稱。"""
+    d = sec.fetch(FakeClient(payload([game(mode="KIWI", queue_id=450, map_id=12)])))
     html = sec.to_html(d)
     assert "大亂鬥" in html
+    assert "KIWI" not in html
 
 
-def test_html_falls_back_to_original_mode_when_untranslated():
-    d = sec.fetch(FakeClient(payload([game(mode="KIWI")])))
+def test_html_falls_back_to_map_name_when_queue_unknown():
+    """未知的佇列 ID 應改用地圖名稱（mapId 12 → 嚎哭深淵）。"""
+    d = sec.fetch(FakeClient(payload([game(mode="KIWI", queue_id=2400, map_id=12)])))
     html = sec.to_html(d)
-    assert "KIWI" in html
+    assert "嚎哭深淵" in html
+    assert "KIWI" not in html
+
+
+def test_html_shows_other_mode_when_both_unknown():
+    """佇列 ID 與地圖 ID 都未知時應顯示「其他模式」。"""
+    d = sec.fetch(FakeClient(payload([game(mode="KIWI", queue_id=9999, map_id=9999)])))
+    html = sec.to_html(d)
+    assert "其他模式" in html
+    assert "KIWI" not in html
+    assert "9999" not in html
+
+
+def test_raw_game_mode_never_appears_in_html():
+    """內部代號（gameMode: KIWI 等）絕不應該出現在渲染的 HTML 中。"""
+    games_with_various_modes = [
+        game(mode="KIWI", queue_id=2400, map_id=12),
+        game(mode="UNKNOWN_CODE", queue_id=9999, map_id=9999),
+    ]
+    d = sec.fetch(FakeClient(payload(games_with_various_modes)))
+    html = sec.to_html(d)
+    # 這些內部代號不應該在 HTML 中
+    for raw_code in ["KIWI", "UNKNOWN_CODE"]:
+        assert raw_code not in html, f"Raw code '{raw_code}' found in HTML output"
 
 
 def test_html_marks_win_and_loss_distinctly():
     d = sec.fetch(FakeClient(payload([game(win=True), game(win=False)])))
     html = sec.to_html(d)
     assert "win" in html and "loss" in html
+
+
+def test_json_preserves_raw_values_for_consumers():
+    """JSON 輸出應保留原始的 gameMode、queueId、mapId，供機器消費者使用。"""
+    d = sec.fetch(FakeClient(payload([game(mode="KIWI", queue_id=2400, map_id=12)])))
+    as_dict = sec.to_dict(d)
+    game_data = as_dict["games"][0]
+    assert game_data["gameMode"] == "KIWI"
+    assert game_data["queueId"] == 2400
+    assert game_data["mapId"] == 12
+    # 同時也應該有人類可讀的標籤
+    assert game_data["mode_label"] == "嚎哭深淵"
 
 
 def test_none_yields_empty_outputs():
