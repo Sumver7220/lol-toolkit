@@ -11,6 +11,12 @@ def test_nav_height_is_a_component_token():
     assert "--nav-h:44px" in theme.STYLE
 
 
+def test_nav_height_zeroes_out_without_the_nav():
+    """回歸測試：單一子命令的頁面不輸出 <nav>，.bar 卻無條件釘在
+    top:var(--nav-h)。沒有這條規則，搜尋列上方會留下一條死帶。"""
+    assert "body:not(.has-nav){--nav-h:0px}" in theme.STYLE
+
+
 def test_search_bar_sticks_below_the_nav_not_at_zero():
     """回歸測試:.bar 若維持 top:0 會疊在導覽列上。"""
     bar = theme.STYLE[theme.STYLE.index(".bar{"):]

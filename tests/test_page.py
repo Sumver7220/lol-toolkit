@@ -131,6 +131,22 @@ def test_nav_is_omitted_with_a_single_block():
     assert 'class="nav"' not in html
 
 
+def test_body_has_no_has_nav_class_without_a_nav():
+    """回歸測試：.bar 無條件 top:var(--nav-h)，沒有導覽列時必須靠這個
+    class 讓 --nav-h 歸零，否則搜尋列上方會留一條 44px 死帶。"""
+    html = build(blocks=[page.Block("loot", "碎片", "89", "<i>一</i>")])
+    assert "<body>" in html
+    assert 'class="has-nav"' not in html
+
+
+def test_body_has_has_nav_class_with_a_nav():
+    html = build(blocks=[
+        page.Block("skins", "造型", "486", "<i>一</i>"),
+        page.Block("loot", "碎片", "89", "<i>二</i>"),
+    ])
+    assert '<body class="has-nav">' in html
+
+
 def test_every_block_is_wrapped_in_an_anchor_matching_its_nav_href():
     html = build(blocks=[
         page.Block("skins", "造型", "486", "<i>一</i>"),

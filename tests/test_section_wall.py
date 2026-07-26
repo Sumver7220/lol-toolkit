@@ -23,6 +23,15 @@ def test_expand_button_is_wired_to_its_wall():
     assert 'aria-expanded="false"' in html
 
 
+def test_expand_button_defaults_to_hidden():
+    """JS 停用時牆本來就是全展開的，這顆按鈕預設不該出現；
+
+    JS 啟用後 theme.SCRIPT 的 paint() 會在判定需要折疊時把 hidden 拿掉。
+    """
+    html = _wall.wall(tiles="", wall_id="w", expand_label="展開")
+    assert "hidden" in html
+
+
 def test_expand_label_is_escaped():
     html = _wall.wall(tiles="", wall_id="w", expand_label='x" onclick="evil()')
     assert 'onclick="evil()' not in html

@@ -71,11 +71,15 @@ def render_page(
     """組裝完整頁面。blocks 依序排列，每個包進自己的錨點外殼。"""
     stamp = generated_at.strftime("%Y-%m-%d %H:%M")
     shown = [b for b in blocks if b.html]
+    nav = _nav_html(shown)
     body = "\n".join(
         f'<section class="anchor" id="sec-{esc(b.key)}">{b.html}</section>'
         for b in shown
     )
     script = SCRIPT.replace("__TOTAL__", str(total_tiles))
+    # 只有輸出導覽列時才給 body 掛 has-nav：--nav-h 靠這個 class 歸零，
+    # 見 theme.STYLE 的 body:not(.has-nav) 規則。
+    body_class = ' class="has-nav"' if nav else ""
     return f"""<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -84,7 +88,7 @@ def render_page(
 <title>{esc(summoner_name)} 的收藏</title>
 <style>{STYLE}</style>
 </head>
-<body>
+<body{body_class}>
 <div class="wrap"><header class="poster">
 <div class="eyebrow">League of Legends · 個人收藏</div>
 <h1 class="who">{esc(summoner_name)}</h1>
@@ -92,7 +96,7 @@ def render_page(
 <div class="hr"></div>
 {_figures_html(figures)}
 </header></div>
-{_nav_html(shown)}
+{nav}
 {body}
 <div class="wrap"><footer>lol-toolkit · 唯讀 · 不含他人資料</footer></div>
 <script>{script}</script>

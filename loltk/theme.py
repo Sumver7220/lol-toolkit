@@ -55,6 +55,11 @@ STYLE = """
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-text);
   line-height:1.55;-webkit-font-smoothing:antialiased}
+/* 單一子命令的頁面不輸出 <nav>（見 page._nav_html），.bar 卻無條件
+   釘在 top:var(--nav-h)，若不歸零會在搜尋列上方留下一條死帶，讓
+   造型 tile 從上面穿過去。body 有沒有 has-nav 由 page.render_page
+   依導覽列是否輸出來決定。 */
+body:not(.has-nav){--nav-h:0px}
 body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
   opacity:var(--grain);background-image:radial-gradient(#fff 1px,transparent 1px);
   background-size:3px 3px}

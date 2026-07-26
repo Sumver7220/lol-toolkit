@@ -21,7 +21,10 @@ def wall(*, tiles: str, wall_id: str, expand_label: str) -> str:
     return (
         f'<div class="wall-box">'
         f'<div class="wall" id="{esc(wall_id)}">{tiles}</div>'
+        # 預設 hidden：JS 停用時牆本來就是全展開的，這顆按鈕按下去不會
+        # 有任何反應。theme.SCRIPT 的 paint() 判定需要折疊時會把 hidden
+        # 拿掉，JS 啟用時的行為完全不變。
         f'<button class="more" type="button" aria-expanded="false" '
-        f'aria-controls="{esc(wall_id)}">{esc(expand_label)}</button>'
+        f'aria-controls="{esc(wall_id)}" hidden>{esc(expand_label)}</button>'
         f"</div>"
     )
