@@ -27,7 +27,7 @@ def cdn_url(lcu_asset_path: str) -> str:
     """
     if not lcu_asset_path:
         return ""
-    return CDN_BASE + lcu_asset_path.lower().replace("/lol-game-data/assets", "")
+    return CDN_BASE + lcu_asset_path.lower().removeprefix("/lol-game-data/assets")
 
 
 def to_dict(inventory: Inventory, generated_at: datetime) -> dict:
