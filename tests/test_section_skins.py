@@ -19,7 +19,7 @@ def test_tiles_are_flat_not_grouped():
     html = sec.to_html(inv([ANNIE, Champion(2, "歐拉夫", (sk(2001, "哥拉夫", 2),))]))
     assert html.count('class="wall"') == 1
     assert 'class="champion"' not in html
-    assert html.count('class="t') == 3
+    assert html.count('data-k="') == 3
 
 
 def test_tile_is_a_button_for_keyboard_access():
@@ -50,7 +50,7 @@ def test_zero_skin_champions_go_to_chips_not_wall():
     assert "阿祈爾" in html
     assert 'class="chips"' in html
     assert "1 位英雄" in html
-    assert html.count('class="t') == 2
+    assert html.count('data-k="') == 2
 
 
 def test_no_chip_section_when_every_champion_has_skins():
@@ -82,3 +82,30 @@ def test_escapes_hostile_names():
 def test_none_returns_empty_string():
     assert sec.to_html(None) == ""
     assert sec.to_dict(None) is None
+
+
+def test_tile_counting_with_data_k_is_collision_proof():
+    """回歸測試：用 data-k 計算 tile，對 class=\"tally 免疫。
+
+    確保即使有 class=\"tally num\" 元素，tile 計數也不會誤算。
+    tile 數量必須等於已知造型數；class=\"tally num\" 必須存在；
+    若用脆弱的 class=\"t 計數法，此測試會失敗（發現 collision）。
+    """
+    # 2 個英雄、3 張造型
+    html = sec.to_html(inv([ANNIE, Champion(2, "歐拉夫", (sk(2001, "哥拉夫", 2),))]))
+
+    # 用 data-k 計數：應該恰好 3 張 tile
+    assert html.count('data-k="') == 3
+
+    # 驗證 class="tally num" 確實存在（頁面正常結構）
+    assert 'class="tally num"' in html
+
+    # 驗證用脆弱的 class="t 會多算：
+    # - 3 張 tile 的 class="t "
+    # - 1 個 tally 的 class="tally num"（「class="t」會命中「class="tally」）
+    # = 總計 4（不是我們想要的 3）
+    fragile_count = html.count('class="t')
+    assert fragile_count == 4, (
+        f"脆弱計數法 count('class=\"t') 回傳 {fragile_count}，"
+        f"包含了 tally 元素（collision）。這驗證了為什麼用 data-k 才安全。"
+    )

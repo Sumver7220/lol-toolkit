@@ -6,6 +6,7 @@
 """
 
 from ..skins.inventory import Inventory, build_inventory
+from ..skins.render import champion_dicts
 from ..theme import esc
 from ._tile import tile
 
@@ -36,7 +37,6 @@ def to_dict(inv: Inventory | None) -> dict | None:
     """
     if inv is None:
         return None
-    from ..skins.render import champion_dicts
 
     return {"champions": champion_dicts(inv)}
 
@@ -79,7 +79,7 @@ def to_html(inv: Inventory | None) -> str:
  aria-label="搜尋英雄或造型">
 <button class="btn" id="idxbtn" type="button" aria-expanded="false" aria-controls="index">
 英雄索引</button>
-<span class="num tally" id="tally">{total:,} / {total:,}</span>
+<span class="tally num" id="tally">{total:,} / {total:,}</span>
 </div></div>
 <div class="index" id="index"><div class="wrap">{index}</div></div>
 <div class="wrap">
