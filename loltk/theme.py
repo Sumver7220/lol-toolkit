@@ -49,6 +49,7 @@ STYLE = """
   --tile-gap:2px; --tile-min:132px;
   --bar-h:58px;
   --nav-h:44px;
+  --more-h:44px;
 }
 
 *{box-sizing:border-box}
@@ -157,6 +158,22 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
 .t.dead .cap .c{color:var(--text-faint)}
 .hide{display:none!important}
 
+/* --- 圖像牆折疊（屬於 .wall 模式本身，所有牆共用） --- */
+.wall-box{position:relative}
+.wall-box.folded .wall{overflow:hidden}
+/* 遮罩疊在 .wall-box 而非 .wall 上——後者裁切內容。bottom 讓開按鈕高度。 */
+.wall-box.folded::after{content:"";position:absolute;left:0;right:0;
+  bottom:var(--more-h);height:96px;pointer-events:none;
+  background:linear-gradient(transparent,var(--bg))}
+.more{display:block;width:100%;height:var(--more-h);background:var(--surface-2);
+  border:1px solid var(--line);border-top:0;color:var(--text-muted);
+  font:inherit;font-size:var(--fs-xs);letter-spacing:.1em;cursor:pointer;
+  border-radius:0 0 2px 2px}
+.more:hover{color:var(--text);border-color:var(--accent)}
+.more:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* .more 是 display:block，不補這條的話 hidden 屬性會被蓋掉 */
+.more[hidden]{display:none}
+
 /* --- 模式 5：空狀態 --- */
 .empty{padding:var(--s-16) 0;color:var(--text-muted);font-size:var(--fs-base);display:none}
 .empty.on{display:block}
@@ -255,6 +272,53 @@ if(navs.length){
  },{rootMargin:(-NAVH)+'px 0px -60% 0px'});
  for(const a of anchors)io.observe(a);
 }
+/* 圖像牆折疊：預設只露約半個視窗高，按鈕展開。 */
+const RATIO=.5,MARGIN=2,MINROWS=2;
+const unfold=new Map(),repaint=[];
+for(const box of document.querySelectorAll('.wall-box')){
+ const wall=box.querySelector('.wall'),btn=box.querySelector('.more');
+ if(!wall||!btn)continue;
+ const label=btn.textContent.trim();
+ /* forced 是搜尋造成的暫時展開（按鈕整個藏起來），open 是使用者按的
+    （按鈕留著讓他收回去）。兩者混用會出現按鈕文字閃動。 */
+ let open=false,forced=false;
+ const paint=()=>{
+  /* 先處理展開狀態再量測：搜尋時第一張 tile 可能帶著 .hide，
+     量到的高度是 0，先量就會提早 return 把 maxHeight 留在原地。 */
+  if(forced||open){
+   box.classList.remove('folded');wall.style.maxHeight='';
+   btn.hidden=forced;return;
+  }
+  const t=box.querySelector('.t'),cs=getComputedStyle(wall);
+  const h=t?t.getBoundingClientRect().height:0;
+  if(!h){btn.hidden=true;return}
+  const gap=parseFloat(cs.rowGap)||0,pad=parseFloat(cs.paddingTop)||0;
+  /* tile 是正方形，欄寬等於 tile 高，欄數才能從寬度反推。 */
+  const cols=Math.max(1,Math.round((wall.clientWidth+gap)/(h+gap)));
+  const rows=Math.ceil(wall.children.length/cols);
+  const fold=Math.max(MINROWS,Math.floor((innerHeight*RATIO+gap)/(h+gap)));
+  /* 只差幾排就折起來反而多一次點擊，不划算。 */
+  if(rows<fold+MARGIN){
+   btn.hidden=true;box.classList.remove('folded');wall.style.maxHeight='';return;
+  }
+  btn.hidden=false;box.classList.add('folded');
+  wall.style.maxHeight=(pad+fold*h+(fold-1)*gap)+'px';
+ };
+ btn.addEventListener('click',()=>{
+  const was=open;open=!open;
+  btn.textContent=open?'收起':label;
+  btn.setAttribute('aria-expanded',open?'true':'false');
+  paint();
+  /* 收起時牆會縮短，捲軸位置會落在後面的區塊，捲回牆頂並讓開導覽列。 */
+  if(was)scrollTo({top:box.getBoundingClientRect().top+scrollY-NAVH});
+ });
+ unfold.set(wall.id,v=>{forced=v;paint()});
+ repaint.push(paint);
+ paint();
+}
+/* 用 resize 事件而非尺寸觀察器：折疊會改動牆自身的高度，觀察那面牆
+   會讓回呼觸發自己形成無限迴圈；折疊高度也同時取決於視窗高度。 */
+addEventListener('resize',()=>{for(const p of repaint)p()});
 const q=document.getElementById('q');
 if(q){
  const tiles=[...document.querySelectorAll('#skin-wall .t')],
@@ -264,7 +328,9 @@ if(q){
   for(const t of tiles){const hit=!v||t.dataset.k.includes(v);
    t.classList.toggle('hide',!hit);if(hit)n++}
   tally.textContent=n.toLocaleString()+' / TOTAL'.replace('TOTAL',TOTAL.toLocaleString());
-  none.classList.toggle('on',n===0);}
+  none.classList.toggle('on',n===0);
+  /* 命中的 tile 可能落在被裁掉的區域，搜尋期間先攤開整面牆。 */
+  const u=unfold.get('skin-wall');if(u)u(!!v);}
  q.addEventListener('input',()=>apply(q.value));
  toggle.addEventListener('click',()=>{const o=idx.classList.toggle('open');
   toggle.setAttribute('aria-expanded',o)});
