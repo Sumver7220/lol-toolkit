@@ -89,3 +89,71 @@ def test_json_is_human_readable_and_keeps_chinese():
     assert "小紅帽 安妮" in text
     assert "\\u" not in text
     assert "\n" in text
+
+
+def test_html_is_self_contained_document():
+    html = render.to_html(sample_inventory(), AT)
+    assert html.startswith("<!DOCTYPE html>")
+    assert "<html" in html and "</html>" in html
+    # 不得引用任何外部函式庫或字型
+    assert "cdn.jsdelivr" not in html
+    assert "fonts.googleapis" not in html
+    assert "<script src=" not in html
+
+
+def test_html_shows_account_and_summary():
+    html = render.to_html(sample_inventory(), AT)
+    assert "SumverMizz" in html
+    assert "安妮" in html
+    assert "小紅帽 安妮" in html
+
+
+def test_html_lazy_loads_images_with_fallback():
+    html = render.to_html(sample_inventory(), AT)
+    assert 'loading="lazy"' in html
+    assert "onerror" in html
+
+
+def test_html_escapes_special_characters():
+    """帳號名與造型名來自 API，含尖括號時不得破壞版面。"""
+    evil = Inventory(
+        summoner_name='<script>alert("x")</script>',
+        summoner_id=1,
+        champions=(
+            Champion(
+                champion_id=1,
+                name="A & B",
+                skins=(
+                    Skin(
+                        id=1,
+                        name='"><img onerror=alert(1)>',
+                        champion_id=1,
+                        has_chromas=False,
+                        tile_path="/t.jpg",
+                    ),
+                ),
+            ),
+        ),
+    )
+    html = render.to_html(evil, AT)
+    assert "<script>alert" not in html
+    assert "&lt;script&gt;" in html
+    assert "A &amp; B" in html
+    assert "<img onerror=alert(1)>" not in html
+
+
+def test_html_handles_empty_inventory():
+    empty = Inventory(summoner_name="Nobody", summoner_id=0, champions=())
+    html = render.to_html(empty, AT)
+    assert "<!DOCTYPE html>" in html
+    assert "Nobody" in html
+
+
+def test_html_champion_without_skins_still_renders():
+    inv = Inventory(
+        summoner_name="T",
+        summoner_id=1,
+        champions=(Champion(champion_id=268, name="阿祈爾", skins=()),),
+    )
+    html = render.to_html(inv, AT)
+    assert "阿祈爾" in html
