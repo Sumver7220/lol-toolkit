@@ -25,7 +25,10 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    # 不使用 UPX 壓縮。這個執行檔的用途是給陌生人下載，而 UPX 壓縮是
+    # 防毒軟體誤判的常見來源；另外 PyInstaller 在找不到 UPX 時會靜默
+    # 跳過，導致不同機器建出來的執行檔不一致，難以重現。
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=True,
