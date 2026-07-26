@@ -1,3 +1,5 @@
+"""讓 `python -m loltk` 可以直接執行的進入點。"""
+
 import sys
 
 from .cli import main
