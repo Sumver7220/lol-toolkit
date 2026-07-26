@@ -88,7 +88,7 @@ def test_main_reports_lcu_error_and_returns_nonzero(monkeypatch, capsys):
     monkeypatch.setattr(cli.lcu.LcuClient, "connect", staticmethod(boom))
     code = cli.main(["skins", "--quiet"])
     assert code == 1
-    assert "找不到" in capsys.readouterr().out
+    assert "找不到" in capsys.readouterr().err
 
 
 def test_main_succeeds_and_returns_zero(monkeypatch, tmp_path, capsys):
@@ -148,10 +148,10 @@ def test_main_browser_open_failure_does_not_report_as_write_error(
     assert code == 0
     assert (tmp_path / "lol_skins.json").exists()
     assert (tmp_path / "lol_skins.html").exists()
-    out = capsys.readouterr().out
-    assert "寫入輸出檔時發生錯誤" not in out
-    assert "無法自動開啟瀏覽器" in out
-    assert str(tmp_path / "lol_skins.html") in out
+    err = capsys.readouterr().err
+    assert "寫入輸出檔時發生錯誤" not in err
+    assert "無法自動開啟瀏覽器" in err
+    assert str(tmp_path / "lol_skins.html") in err
 
 
 def test_main_resolves_relative_output_dir(monkeypatch, tmp_path):
@@ -199,3 +199,46 @@ def test_main_shows_help_when_unpackaged_with_no_args(monkeypatch):
     with pytest.raises(SystemExit) as exc_info:
         cli.main([])
     assert exc_info.value.code != 0
+
+
+def test_main_catches_unexpected_exception_and_still_pauses(monkeypatch, tmp_path, capsys):
+    """未預期的例外（例如格式錯誤的紀錄造成 TypeError）不得讓 exe 視窗
+    瞬間消失：仍要印出訊息、回傳非零離開碼，且照樣暫停等待 Enter。"""
+
+    def boom():
+        raise TypeError("'NoneType' object is not subscriptable")
+
+    monkeypatch.setattr(cli.lcu.LcuClient, "connect", staticmethod(boom))
+    paused = []
+    monkeypatch.setattr("builtins.input", lambda *a: paused.append(1))
+    code = cli.main(["skins", "--output", str(tmp_path)])
+    assert code == 1
+    assert paused == [1]
+    assert "發生未預期的錯誤" in capsys.readouterr().err
+
+
+def test_pause_swallows_eof_error_when_stdin_closed(monkeypatch):
+    """以管道方式呼叫（stdin 已關閉）時 input() 會拋出 EOFError，
+    _pause 本身不能因此而炸掉。"""
+
+    def raise_eof(*a):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", raise_eof)
+    cli._pause(quiet=False)  # 不應拋出例外
+
+
+def test_command_dispatch_uses_registered_handler(monkeypatch):
+    """main() 必須依 args.command 查表決定要跑哪個處理函式，而不是
+    永遠呼叫 _run_skins——否則未來多一個子命令就會被誤導向錯的處理函式。"""
+    calls = []
+
+    def fake_handler(args):
+        calls.append(args)
+        return 0
+
+    monkeypatch.setitem(cli.COMMANDS, "skins", fake_handler)
+    monkeypatch.setattr(cli, "_pause", lambda quiet: None)
+    code = cli.main(["skins", "--quiet"])
+    assert code == 0
+    assert len(calls) == 1

@@ -8,6 +8,7 @@ dist/
 
 # 程式輸出
 lol_skins.json
+lol_skins.html
 
 # Python
 __pycache__/

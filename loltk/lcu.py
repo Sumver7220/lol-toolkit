@@ -52,7 +52,7 @@ class NotLoggedIn(LcuError):
 
 
 class LcuRequestFailed(LcuError):
-    pass
+    """對客戶端發出請求後失敗（逾時、連線錯誤或回應內容無法解析）。"""
 
 
 def parse_client_args(cmdline: list[str] | None) -> tuple[str, str] | None:
@@ -125,6 +125,11 @@ class LcuClient:
                 f"客戶端回應逾時（連線 {CONNECT_TIMEOUT} 秒／讀取 {READ_TIMEOUT} 秒）。"
                 "請確認客戶端沒有卡住，稍後再試。"
             ) from None
+        # requests.exceptions.JSONDecodeError 同時繼承 RequestException 與
+        # ValueError，必須先攔截，否則會被下面的 RequestException 分支
+        # 先捕捉，導致「解析失敗」被誤報成「通訊錯誤」。
+        except requests.exceptions.JSONDecodeError as exc:
+            raise LcuRequestFailed(f"解析客戶端回傳的資料時發生錯誤：{exc}") from exc
         except requests.exceptions.RequestException as exc:
             raise LcuRequestFailed(f"與客戶端通訊時發生錯誤：{exc}") from exc
         except ValueError as exc:

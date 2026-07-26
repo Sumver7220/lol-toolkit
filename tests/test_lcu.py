@@ -143,8 +143,29 @@ def test_client_get_json_wraps_timeout_error():
 
 
 def test_client_get_json_wraps_invalid_json():
-    session = FakeSession(FakeResponse(raise_exc=ValueError("bad json")))
+    """使用真正的 requests.Response（而非 mock）以取得非 JSON 內容時的
+    真實例外類型。requests.exceptions.JSONDecodeError 同時繼承
+    RequestException 與 ValueError，若 get_json 的例外處理順序錯誤
+    （RequestException 排在 JSONDecodeError 之前），這裡會得到
+    「與客戶端通訊時發生錯誤」而不是「解析...」，測試就會失敗。"""
+    response = requests.Response()
+    response.status_code = 200
+    response._content = b"<html>not json</html>"
+    session = FakeSession(response)
     client = lcu.LcuClient("1", "t", session=session)
     with pytest.raises(lcu.LcuRequestFailed) as err:
         client.get_json("/x")
     assert "解析" in err.value.message
+
+
+def test_client_get_json_wraps_http_error_status():
+    """非逾時的 RequestException（例如伺服器回 5xx）要用真正的
+    requests.Response 觸發 raise_for_status()，確保走的是
+    RequestException 分支而非 JSON 解析分支。"""
+    response = requests.Response()
+    response.status_code = 500
+    session = FakeSession(response)
+    client = lcu.LcuClient("1", "t", session=session)
+    with pytest.raises(lcu.LcuRequestFailed) as err:
+        client.get_json("/x")
+    assert "與客戶端通訊時發生錯誤" in err.value.message

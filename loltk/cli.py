@@ -85,8 +85,14 @@ def write_outputs(
 
 
 def _pause(quiet: bool) -> None:
-    if not quiet:
+    if quiet:
+        return
+    try:
         input("按 Enter 鍵後離開...")
+    except EOFError:
+        # stdin 被關閉（例如以管道方式呼叫）時 input() 會拋出此例外，
+        # 這種情況下沒有人在等待暫停，直接放行即可。
+        pass
 
 
 def _configure_stdout() -> None:
@@ -129,9 +135,17 @@ def _run_skins(args) -> int:
         except OSError as exc:
             print(
                 f"檔案已產生，但無法自動開啟瀏覽器：{exc}\n"
-                f"請手動開啟：{html_files[0]}"
+                f"請手動開啟：{html_files[0]}",
+                file=sys.stderr,
             )
     return 0
+
+
+# 子命令名稱 -> 處理函式。未來新增子命令時只需在這裡登記，
+# 不會像直接呼叫 _run_skins 一樣被靜默導向錯的處理函式。
+COMMANDS = {
+    "skins": _run_skins,
+}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -145,16 +159,21 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     quiet = getattr(args, "quiet", False)
 
+    code = 1
     try:
-        code = _run_skins(args)
+        handler = COMMANDS[args.command]
+        code = handler(args)
     except lcu.LcuError as exc:
-        print(exc.message)
-        _pause(quiet)
-        return 1
+        print(exc.message, file=sys.stderr)
+        code = 1
     except OSError as exc:
-        print(f"寫入輸出檔時發生錯誤：{exc}")
+        print(f"寫入輸出檔時發生錯誤：{exc}", file=sys.stderr)
+        code = 1
+    except Exception as exc:
+        # 保底處理：任何未預期的例外都不能讓程式在雙擊執行時
+        # 瞬間關閉視窗——至少要印出訊息並暫停讓使用者看到。
+        print(f"發生未預期的錯誤：{exc}", file=sys.stderr)
+        code = 1
+    finally:
         _pause(quiet)
-        return 1
-
-    _pause(quiet)
     return code

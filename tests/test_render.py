@@ -1,4 +1,6 @@
+import html as html_lib
 import json
+import re
 from datetime import datetime, timezone, timedelta
 
 from loltk.skins import render
@@ -140,6 +142,41 @@ def test_html_escapes_special_characters():
     assert "&lt;script&gt;" in html
     assert "A &amp; B" in html
     assert "<img onerror=alert(1)>" not in html
+
+
+def test_html_escapes_quotes_to_prevent_attribute_breakout():
+    """_esc 必須用 quote=True；若改成 quote=False，這個測試會失敗：
+    含雙引號的造型名稱會提前結束 alt="..." 屬性，讓 onmouseover=... 變成
+    真正的 HTML 屬性（XSS）。單純檢查 <、> 被跳脫（如舊測試）不會抓到
+    這種情況，因為這個 payload 不含 <、>。"""
+    evil_name = 'x" onmouseover=alert(1) x="'
+    inv = Inventory(
+        summoner_name="T",
+        summoner_id=1,
+        champions=(
+            Champion(
+                champion_id=1,
+                name="C",
+                skins=(
+                    Skin(
+                        id=1,
+                        name=evil_name,
+                        champion_id=1,
+                        has_chromas=False,
+                        tile_path="/t.jpg",
+                    ),
+                ),
+            ),
+        ),
+    )
+    html = render.to_html(inv, AT)
+    assert "&quot;" in html
+
+    match = re.search(r'alt="([^"]*)"', html)
+    assert match is not None, "找不到 alt 屬性，HTML 結構可能已被破壞"
+    # 還原跳脫後的內容必須等於原始造型名稱：如果雙引號沒被跳脫，
+    # 屬性值會在第一個裸露的 " 處被提前截斷，還原結果就不會相符。
+    assert html_lib.unescape(match.group(1)) == evil_name
 
 
 def test_html_handles_empty_inventory():
