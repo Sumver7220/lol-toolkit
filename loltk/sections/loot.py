@@ -45,7 +45,7 @@ def fetch(client) -> list[dict] | None:
 def to_dict(data: list[dict] | None) -> dict | None:
     """轉換為字典格式。
 
-    計算碎片總數與可分解的藍色精華總量。
+    計算碎片總數與可分解的橘色精華總量。
     """
     if not data:
         return None
@@ -68,7 +68,7 @@ def to_dict(data: list[dict] | None) -> dict | None:
 def to_html(data: list[dict] | None) -> str:
     """轉換為 HTML。
 
-    顯示造型碎片網格，標示重複數量與藍色精華總量。
+    顯示造型碎片網格，標示重複數量與橘色精華總量。
     """
     if not data:
         return ""
@@ -84,6 +84,6 @@ def to_html(data: list[dict] | None) -> str:
     )
     return f"""<div class="wrap">
 <section class="block">
-<h2 class="block-h">{esc(TITLE)} <span class="sub">{total:,} 個 · 分解可得 {value:,} 藍色精華</span></h2>
+<h2 class="block-h">{esc(TITLE)} <span class="sub">{total:,} 個 · 分解可得 {value:,} 橘色精華</span></h2>
 <div class="wall">{tiles}</div>
 </section></div>"""
