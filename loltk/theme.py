@@ -29,7 +29,7 @@ STYLE = """
   --line:var(--ink-700); --line-soft:var(--ink-800);
   --text:var(--ink-50); --text-muted:var(--ink-300); --text-faint:var(--ink-400);
   --accent:var(--gold-500); --accent-quiet:var(--gold-400);
-  --tile-bg:var(--ink-800); --grain:.035;
+  --tile-bg:var(--ink-800);
   --poster-glow:radial-gradient(120% 90% at 10% -10%,#1a1a22 0%,transparent 62%);
 }
 @media (prefers-color-scheme:light){
@@ -38,7 +38,7 @@ STYLE = """
     --line:var(--paper-200); --line-soft:var(--paper-100);
     --text:#15171c; --text-muted:#4f5661; --text-faint:#5d6470;
     --accent:var(--gold-700); --accent-quiet:var(--gold-700);
-    --tile-bg:var(--paper-200); --grain:0;
+    --tile-bg:var(--paper-200);
     --poster-glow:radial-gradient(120% 90% at 10% -10%,#fffdf8 0%,transparent 62%);
   }
 }
@@ -60,9 +60,6 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-text
    造型 tile 從上面穿過去。body 有沒有 has-nav 由 page.render_page
    依導覽列是否輸出來決定。 */
 body:not(.has-nav){--nav-h:0px}
-body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
-  opacity:var(--grain);background-image:radial-gradient(#fff 1px,transparent 1px);
-  background-size:3px 3px}
 .wrap{max-width:1680px;margin:0 auto;padding:0 var(--s-6)}
 .num{font-family:var(--font-display);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
 
