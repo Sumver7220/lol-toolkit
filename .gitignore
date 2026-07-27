@@ -10,6 +10,9 @@ dist/
 lol_skins.json
 lol_skins.html
 
+# 編輯器設定，本機保留即可
+.vscode/
+
 # Python
 __pycache__/
 *.py[cod]
